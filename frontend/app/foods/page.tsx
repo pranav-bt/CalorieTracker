@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { BookOpen, Pencil, Save, Search, Trash2, X } from "lucide-react";
-import { API_BASE_URL } from "../config";
+import { deleteFood, getFoods, updateFood, upsertFood } from "../db";
 import type { Food, Unit } from "../types";
 
 export default function FoodsPage() {
@@ -17,9 +17,7 @@ export default function FoodsPage() {
   const [error, setError] = useState("");
 
   async function loadFoods() {
-    const response = await fetch(`${API_BASE_URL}/foods`);
-    if (!response.ok) throw new Error("Could not load foods.");
-    setFoods(await response.json());
+    setFoods(await getFoods());
   }
 
   useEffect(() => {
@@ -55,25 +53,15 @@ export default function FoodsPage() {
     if (validationError) { setError(validationError); return; }
 
     try {
-      const url = editingId ? `${API_BASE_URL}/foods/${editingId}` : `${API_BASE_URL}/foods`;
-      const method = editingId ? "PATCH" : "POST";
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: foodName.trim(),
-          unit: foodUnit,
-          reference_quantity: Number(foodQuantity),
-          reference_calories: Number(foodCalories),
-        }),
-      });
-
-      if (!response.ok) {
-        const payload = await response.json();
-        throw new Error(friendlyFoodError(payload));
-      }
-
-      const savedFood = (await response.json()) as Food;
+      const payload = {
+        name: foodName.trim(),
+        unit: foodUnit,
+        reference_quantity: Number(foodQuantity),
+        reference_calories: Number(foodCalories),
+      };
+      const savedFood = editingId
+        ? await updateFood(editingId, payload)
+        : await upsertFood(payload);
       setMessage(`Saved "${savedFood.name}" successfully.`);
       setEditingId(null);
       await loadFoods();
@@ -82,12 +70,11 @@ export default function FoodsPage() {
     }
   }
 
-  async function deleteFood(food: Food) {
+  async function handleDeleteFood(food: Food) {
     setError("");
     setMessage("");
     try {
-      const response = await fetch(`${API_BASE_URL}/foods/${food.id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error(`Could not delete "${food.name}".`);
+      await deleteFood(food.id);
       setMessage(`Deleted "${food.name}".`);
       if (editingId === food.id) cancelEdit();
       await loadFoods();
@@ -199,7 +186,7 @@ export default function FoodsPage() {
                   </button>
                   <button
                     className="iconButton danger"
-                    onClick={() => deleteFood(food)}
+                    onClick={() => handleDeleteFood(food)}
                     title={`Delete ${food.name}`}
                     type="button"
                   >
@@ -226,20 +213,3 @@ function validateFoodForm(name: string, quantity: string, calories: string): str
   return null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function friendlyFoodError(payload: any): string {
-  if (typeof payload?.detail === "string") return payload.detail;
-  if (Array.isArray(payload?.detail)) {
-    const first = payload.detail[0];
-    const field = String(first?.loc?.slice(-1)[0] ?? "");
-    const msg = first?.msg ?? "Invalid input.";
-    const labels: Record<string, string> = {
-      name: "Name",
-      reference_quantity: "Quantity",
-      reference_calories: "Calories",
-      unit: "Unit",
-    };
-    return `${labels[field] ?? field}: ${msg}`;
-  }
-  return "Could not save food.";
-}

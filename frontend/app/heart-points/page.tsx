@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, Clock, Gift, Heart } from "lucide-react";
-import { API_BASE_URL } from "../config";
+import { claimRedemption, getHeartPoints, redeemReward } from "../db";
 import type { HeartPointsBalance, Redemption, RewardItem } from "../types";
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -21,11 +21,9 @@ export default function HeartPointsPage() {
 
   async function load() {
     try {
-      const res = await fetch(`${API_BASE_URL}/heart-points`);
-      if (!res.ok) throw new Error("Could not load heart points.");
-      setData((await res.json()) as HeartPointsBalance);
+      setData(await getHeartPoints());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Backend not reachable.");
+      setError(e instanceof Error ? e.message : "Could not load heart points.");
     }
   }
 
@@ -37,20 +35,11 @@ export default function HeartPointsPage() {
     setSuccessMsg("");
     setError("");
     try {
-      const res = await fetch(`${API_BASE_URL}/heart-points/redeem`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reward_id: reward.id }),
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        setError(body.detail ?? "Redemption failed.");
-      } else {
-        setSuccessMsg(`"${reward.name}" is now pending! Enjoy it when it happens bubu!`);
-        await load();
-      }
-    } catch {
-      setError("Could not redeem reward.");
+      await redeemReward(reward.id);
+      setSuccessMsg(`"${reward.name}" is now pending! Enjoy it when it happens bubu!`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not redeem reward.");
     } finally {
       setRedeeming(null);
     }
@@ -60,16 +49,11 @@ export default function HeartPointsPage() {
     setClaiming(r.id);
     setError("");
     try {
-      const res = await fetch(`${API_BASE_URL}/heart-points/claim/${r.id}`, { method: "POST" });
-      if (!res.ok) {
-        const body = await res.json();
-        setError(body.detail ?? "Could not mark as claimed.");
-      } else {
-        setSuccessMsg(`"${r.reward}" marked as done! Amazing!`);
-        await load();
-      }
-    } catch {
-      setError("Could not claim reward.");
+      await claimRedemption(r.id);
+      setSuccessMsg(`"${r.reward}" marked as done! Amazing!`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not claim reward.");
     } finally {
       setClaiming(null);
     }

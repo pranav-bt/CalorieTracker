@@ -13,15 +13,15 @@ import {
   Settings,
 } from "lucide-react";
 import { LoveNotePopup } from "./LoveNotePopup";
-import { API_BASE_URL } from "../config";
+import { getLoveNote } from "../db";
 
 const navItems = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/log-meal", label: "Log Meal", icon: Plus },
-  { href: "/foods", label: "Food Database", icon: BookOpen },
-  { href: "/goals", label: "Goals", icon: Settings },
-  { href: "/history", label: "History", icon: CalendarDays },
-  { href: "/heart-points", label: "Heart Points", icon: Heart },
+  { href: "/", label: "Home", shortLabel: "Home", icon: Home },
+  { href: "/log-meal", label: "Log Meal", shortLabel: "Log", icon: Plus },
+  { href: "/foods", label: "Food Database", shortLabel: "Foods", icon: BookOpen },
+  { href: "/goals", label: "Goals", shortLabel: "Goals", icon: Settings },
+  { href: "/history", label: "History", shortLabel: "History", icon: CalendarDays },
+  { href: "/heart-points", label: "Heart Points", shortLabel: "Hearts", icon: Heart },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -29,18 +29,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [loveNote, setLoveNote] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchAndSchedule() {
-      try {
-        const response = await fetch(`${API_BASE_URL}/love-note`);
-        if (!response.ok) return;
-        const { text } = await response.json();
-        const timer = setTimeout(() => setLoveNote(text), 45_000);
-        return () => clearTimeout(timer);
-      } catch {
-        // silently ignore if backend unreachable
-      }
-    }
-    fetchAndSchedule();
+    const text = getLoveNote();
+    const timer = setTimeout(() => setLoveNote(text), 45_000);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
@@ -69,6 +60,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
       <main className="pageShell">{children}</main>
+      <nav className="mobileNav">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              aria-current={isActive ? "page" : undefined}
+              className={isActive ? "mobileNavLink active" : "mobileNavLink"}
+              href={item.href}
+              key={item.href}
+            >
+              <Icon size={22} />
+              <span>{item.shortLabel}</span>
+            </Link>
+          );
+        })}
+      </nav>
       {loveNote && (
         <LoveNotePopup message={loveNote} onDismiss={() => setLoveNote(null)} />
       )}

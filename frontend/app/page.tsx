@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, CheckCircle2, Circle, Flame, Heart, Trophy } from "lucide-react";
-import { API_BASE_URL } from "./config";
+import { getDailySummary, getHistory, completeChallenge as dbCompleteChallenge } from "./db";
 import type { DailySummary, HistoryDay } from "./types";
 
 export default function Home() {
@@ -14,19 +14,13 @@ export default function Home() {
 
   useEffect(() => {
     async function loadDashboard() {
-      const [summaryResponse, historyResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/daily-summary`),
-        fetch(`${API_BASE_URL}/history`),
+      const [summaryData, historyData] = await Promise.all([
+        getDailySummary(),
+        getHistory(),
       ]);
-
-      if (!summaryResponse.ok || !historyResponse.ok) {
-        throw new Error("Could not load dashboard.");
-      }
-
-      const summaryData = (await summaryResponse.json()) as DailySummary;
       setSummary(summaryData);
       setChallengeDone(summaryData.challenge_completed);
-      setHistory(await historyResponse.json());
+      setHistory(historyData);
     }
 
     loadDashboard().catch((caught) => {
@@ -36,7 +30,7 @@ export default function Home() {
 
   async function completeChallenge() {
     setChallengeDone(true);
-    await fetch(`${API_BASE_URL}/challenge/complete`, { method: "POST" });
+    await dbCompleteChallenge();
   }
 
   const goal = summary?.adjusted_goal ?? 0;
@@ -147,6 +141,7 @@ export default function Home() {
           })}
         </div>
       </section>
+
       {summary?.weekly_report_message && (
         <section className="panel weekReportCard">
           <div className="panelHeader">
@@ -196,10 +191,8 @@ export default function Home() {
 
 function buildWeekDays(summary: DailySummary | null, history: HistoryDay[]) {
   if (!summary) return [];
-
   const totals = new Map(history.map((day) => [day.date, day.total_calories]));
   const start = new Date(`${summary.week_start}T00:00:00`);
-
   return Array.from({ length: 7 }, (_, index) => {
     const day = new Date(start);
     day.setDate(start.getDate() + index);

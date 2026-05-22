@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { Plus, Save, Trash2 } from "lucide-react";
-import { API_BASE_URL } from "../config";
+import { deleteMeal, getFoods, getMeals, logMeal } from "../db";
 import { MilestonePopup } from "../components/MilestonePopup";
 import { HeartPointsToast } from "../components/HeartPointsToast";
 import type { Food, MealRecord, MealRow, MealSummary, Unit } from "../types";
@@ -20,73 +20,40 @@ export default function LogMealPage() {
   const [heartPointsEarned, setHeartPointsEarned] = useState<number | null>(null);
 
   async function refreshData() {
-    const [foodsResponse, mealsResponse] = await Promise.all([
-      fetch(`${API_BASE_URL}/foods`),
-      fetch(`${API_BASE_URL}/meals`),
-    ]);
-
-    if (foodsResponse.ok) {
-      setFoods(await foodsResponse.json());
-    }
-
-    if (mealsResponse.ok) {
-      setTodayMeals(await mealsResponse.json());
-    }
+    const [foodsData, mealsData] = await Promise.all([getFoods(), getMeals()]);
+    setFoods(foodsData);
+    setTodayMeals(mealsData);
   }
 
   useEffect(() => {
-    refreshData().catch(() => setError("Backend is not reachable."));
+    refreshData().catch(() => setError("Could not load data."));
   }, []);
 
   function updateMealRow(index: number, updates: Partial<MealRow>) {
-    setMealRows((currentRows) =>
-      currentRows.map((row, rowIndex) =>
-        rowIndex === index ? { ...row, ...updates } : row,
-      ),
-    );
+    setMealRows((rows) => rows.map((r, i) => (i === index ? { ...r, ...updates } : r)));
   }
 
   function updateMealFood(index: number, name: string) {
-    const normalizedName = name.trim().toLowerCase();
-    const food = foods.find((knownFood) => knownFood.name === normalizedName);
-    updateMealRow(index, {
-      name,
-      unit: food?.unit ?? mealRows[index].unit,
-    });
+    const food = foods.find((f) => f.name === name.trim().toLowerCase());
+    updateMealRow(index, { name, unit: food?.unit ?? mealRows[index].unit });
   }
 
   async function submitMeal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
-    // Client-side validation
     const validationError = validateMealRows(mealRows, foods);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    if (validationError) { setError(validationError); return; }
 
     setIsLoading(true);
-
     try {
-      const response = await fetch(`${API_BASE_URL}/log-meal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: mealRows.map((row) => ({
-            name: row.name.trim().toLowerCase(),
-            quantity: Number(row.quantity),
-            unit: row.unit,
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        const payload = await response.json();
-        throw new Error(friendlyApiError(payload));
-      }
-
-      const meal = (await response.json()) as MealSummary;
+      const meal = await logMeal(
+        mealRows.map((r) => ({
+          name: r.name.trim().toLowerCase(),
+          quantity: Number(r.quantity),
+          unit: r.unit,
+        }))
+      );
       setLastMeal(meal);
       if (meal.milestone) setMilestoneToast(meal.milestone);
       if (meal.heart_points_earned > 0) setHeartPointsEarned(meal.heart_points_earned);
@@ -99,21 +66,15 @@ export default function LogMealPage() {
     }
   }
 
-  async function deleteMeal(mealId: number) {
+  async function handleDeleteMeal(mealId: number) {
     setError("");
-    const response = await fetch(`${API_BASE_URL}/meal/${mealId}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
+    try {
+      await deleteMeal(mealId);
+      if (lastMeal?.id === mealId) setLastMeal(null);
+      await refreshData();
+    } catch {
       setError("Could not delete meal.");
-      return;
     }
-
-    if (lastMeal?.id === mealId) {
-      setLastMeal(null);
-    }
-    await refreshData();
   }
 
   return (
@@ -156,8 +117,8 @@ export default function LogMealPage() {
                 list="known-foods"
                 placeholder="Start typing a food"
                 value={row.name}
-                onChange={(event) => updateMealFood(index, event.target.value)}
-                onBlur={(event) => updateMealFood(index, event.target.value)}
+                onChange={(e) => updateMealFood(index, e.target.value)}
+                onBlur={(e) => updateMealFood(index, e.target.value)}
               />
               <input
                 aria-label={`Quantity ${index + 1}`}
@@ -165,12 +126,12 @@ export default function LogMealPage() {
                 step="0.01"
                 type="number"
                 value={row.quantity}
-                onChange={(event) => updateMealRow(index, { quantity: event.target.value })}
+                onChange={(e) => updateMealRow(index, { quantity: e.target.value })}
               />
               <select
                 aria-label={`Unit ${index + 1}`}
                 value={row.unit}
-                onChange={(event) => updateMealRow(index, { unit: event.target.value as Unit })}
+                onChange={(e) => updateMealRow(index, { unit: e.target.value as Unit })}
               >
                 <option value="g">g</option>
                 <option value="ml">ml</option>
@@ -180,7 +141,7 @@ export default function LogMealPage() {
               <button
                 className="iconButton danger"
                 disabled={mealRows.length === 1}
-                onClick={() => setMealRows((rows) => rows.filter((_, rowIndex) => rowIndex !== index))}
+                onClick={() => setMealRows((rows) => rows.filter((_, i) => i !== index))}
                 title="Remove row"
                 type="button"
               >
@@ -190,10 +151,7 @@ export default function LogMealPage() {
           ))}
         </div>
         <div className="actionRow">
-          <button
-            type="button"
-            onClick={() => setMealRows((rows) => [...rows, { ...emptyMealRow }])}
-          >
+          <button type="button" onClick={() => setMealRows((rows) => [...rows, { ...emptyMealRow }])}>
             <Plus size={18} />
             Add row
           </button>
@@ -205,13 +163,13 @@ export default function LogMealPage() {
         {error ? <p className="error">{error}</p> : null}
       </form>
 
-      {lastMeal ? (
+      {lastMeal && (
         <section className="panel">
           <div className="panelHeader">
             <h2>Last meal</h2>
             <button
               className="iconButton danger"
-              onClick={() => deleteMeal(lastMeal.id)}
+              onClick={() => handleDeleteMeal(lastMeal.id)}
               title="Delete last meal"
             >
               <Trash2 size={17} />
@@ -219,7 +177,7 @@ export default function LogMealPage() {
           </div>
           <MealItems meal={lastMeal} />
         </section>
-      ) : null}
+      )}
 
       <section className="panel">
         <div className="panelHeader">
@@ -235,7 +193,7 @@ export default function LogMealPage() {
                 </div>
                 <button
                   className="iconButton danger"
-                  onClick={() => deleteMeal(meal.id)}
+                  onClick={() => handleDeleteMeal(meal.id)}
                   title="Delete meal"
                 >
                   <Trash2 size={17} />
@@ -252,32 +210,18 @@ export default function LogMealPage() {
 }
 
 function validateMealRows(rows: MealRow[], foods: Food[]): string | null {
-  const knownNames = new Set(foods.map((f) => f.name));
+  const known = new Set(foods.map((f) => f.name));
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const label = rows.length > 1 ? `Row ${i + 1}: ` : "";
     if (!row.name.trim()) return `${label}Please enter a food name.`;
-    if (!knownNames.has(row.name.trim().toLowerCase()))
+    if (!known.has(row.name.trim().toLowerCase()))
       return `${label}"${row.name}" is not in your food database. Add it first.`;
     const qty = Number(row.quantity);
     if (!row.quantity || isNaN(qty) || qty <= 0)
       return `${label}Quantity must be greater than zero.`;
   }
   return null;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function friendlyApiError(payload: any): string {
-  if (typeof payload?.detail === "string") return payload.detail;
-  if (Array.isArray(payload?.detail)) {
-    return payload.detail
-      .map((e: { loc?: (string | number)[]; msg?: string }) => {
-        const field = e.loc?.slice(-1)[0];
-        return field !== undefined ? `${field}: ${e.msg}` : e.msg;
-      })
-      .join("; ");
-  }
-  return "Could not log meal.";
 }
 
 function MealItems({
@@ -299,13 +243,12 @@ function MealItems({
           </li>
         ))}
       </ul>
-      {!compact ? (
+      {!compact && (
         <div className="totalLine">
           <span>Total</span>
           <strong>{meal.total_calories}</strong>
         </div>
-      ) : null}
+      )}
     </>
   );
 }
-

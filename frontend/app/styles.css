@@ -1209,69 +1209,168 @@ button:disabled {
   to   { opacity: 1; transform: scale(1); }
 }
 
+/* Mobile bottom nav — hidden on desktop */
+.mobileNav {
+  display: none;
+}
+
 @media (max-width: 760px) {
+  /* ── Layout ── */
   .appShell {
     grid-template-columns: 1fr;
   }
 
   .sideNav {
-    border-bottom: 1px solid var(--line);
-    border-right: 0;
-    padding: 14px;
+    display: none;
   }
 
-  .sideNav nav {
+  .mobileNav {
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    bottom: 0;
     display: flex;
-    gap: 8px;
-    overflow-x: auto;
+    left: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    position: fixed;
+    right: 0;
+    z-index: 100;
   }
 
-  .navLink {
-    flex: 0 0 auto;
+  .mobileNavLink {
+    align-items: center;
+    color: var(--muted);
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    font-size: 10px;
+    font-weight: 600;
+    gap: 3px;
+    justify-content: center;
+    min-height: 56px;
+    padding: 6px 2px;
+    text-align: center;
   }
 
+  .mobileNavLink.active {
+    color: var(--accent-dark);
+  }
+
+  .mobileNavLink span {
+    line-height: 1;
+  }
+
+  /* ── Page shell ── */
   .pageShell {
-    padding: 20px;
+    padding: 16px 14px calc(64px + env(safe-area-inset-bottom, 0px));
   }
 
+  .pageStack {
+    gap: 14px;
+  }
+
+  /* ── Typography ── */
+  h1 {
+    font-size: 26px;
+  }
+
+  .summaryBand strong {
+    font-size: 22px;
+  }
+
+  .weekMetrics strong {
+    font-size: 20px;
+  }
+
+  /* ── Page header ── */
   .pageHeader {
-    align-items: stretch;
+    align-items: flex-start;
     flex-direction: column;
+    gap: 10px;
   }
 
-  .shell {
-    grid-template-columns: 1fr;
-    padding: 20px;
+  .pageHeaderRight {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
+  /* ── Panels ── */
+  .panel,
+  .history {
+    margin-top: 0;
+    padding: 16px;
+  }
+
+  .logForm {
+    padding: 16px;
+  }
+
+  /* ── Summary band — keep as row, just reduce padding ── */
   .summaryBand {
-    align-items: stretch;
-    flex-direction: column;
+    gap: 0;
+    padding: 14px 16px;
   }
 
-  .inputRow {
-    align-items: stretch;
-    flex-direction: column;
+  .summaryBand div {
+    flex: 1;
+    text-align: center;
   }
 
+  .summaryBand.compact div {
+    text-align: center;
+  }
+
+  /* ── Week metrics ── */
+  .weekMetrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  /* ── Bar chart ── */
+  .barChart {
+    height: 120px;
+    gap: 6px;
+  }
+
+  .barTrack {
+    height: 90px;
+  }
+
+  /* ── Meal table ── */
   .tableHead {
     display: none;
   }
 
   .tableRow {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr 40px;
+    grid-template-rows: auto auto;
+    gap: 6px;
   }
 
+  .tableRow > input:first-child {
+    grid-column: 1 / 3;
+    grid-row: 1;
+  }
+
+  .tableRow > button {
+    align-self: stretch;
+    grid-column: 3;
+    grid-row: 1 / 3;
+    min-height: 0;
+    width: 40px;
+  }
+
+  /* ── Food form field grid ── */
+  .fieldGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .fieldGrid label:first-child {
+    grid-column: 1 / 3;
+  }
+
+  /* ── Action row ── */
   .actionRow {
     flex-direction: column;
-  }
-
-  .fieldGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .weekMetrics {
-    grid-template-columns: 1fr;
   }
 
   button {
@@ -1280,5 +1379,46 @@ button:disabled {
 
   .iconButton {
     width: 40px;
+  }
+
+  /* ── Toasts — keep above bottom nav ── */
+  .toast,
+  .heartToast {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ── Shell (legacy 2-col layout, if used) ── */
+  .shell {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  /* ── Date range row ── */
+  .dateRangeRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dateField {
+    justify-content: space-between;
+  }
+
+  .dateField input {
+    flex: 1;
+  }
+
+  /* ── Reward grid ── */
+  .rewardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Week report stats ── */
+  .weekReportStats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .weekReportStats strong {
+    font-size: 18px;
   }
 }

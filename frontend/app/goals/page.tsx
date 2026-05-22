@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { CalendarDays, Save, Settings } from "lucide-react";
-import { API_BASE_URL } from "../config";
+import { getDailySummary, updateSettings } from "../db";
 import type { DailySummary, GoalMode } from "../types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -22,92 +22,51 @@ export default function GoalsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadSummary() {
-      const response = await fetch(`${API_BASE_URL}/daily-summary`);
-      if (!response.ok) throw new Error("Could not load goals.");
-      const nextSummary = (await response.json()) as DailySummary;
-      setSummary(nextSummary);
-      setGoalMode(nextSummary.goal_mode);
-      setDailyGoal(String(nextSummary.daily_goal));
-      setWeeklyGoal(String(nextSummary.weekly_goal));
-      setWeekStartDay(nextSummary.week_start_day);
-      setPartnerName(nextSummary.partner_name ?? "");
-    }
-
-    loadSummary().catch(() => setError("Backend is not reachable."));
+    getDailySummary()
+      .then((s) => {
+        setSummary(s);
+        setGoalMode(s.goal_mode);
+        setDailyGoal(String(s.daily_goal));
+        setWeeklyGoal(String(s.weekly_goal));
+        setWeekStartDay(s.week_start_day);
+        setPartnerName(s.partner_name ?? "");
+      })
+      .catch(() => setError("Could not load goals."));
   }, []);
 
   async function submitSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-    setMessage("");
-
+    setError(""); setMessage("");
     try {
-      const response = await fetch(`${API_BASE_URL}/settings`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          goal_mode: goalMode,
-          daily_calorie_goal: goalMode === "daily" ? Number(dailyGoal) : undefined,
-          weekly_calorie_goal: goalMode === "weekly" ? Number(weeklyGoal) : undefined,
-        }),
+      const s = await updateSettings({
+        goal_mode: goalMode,
+        daily_calorie_goal: goalMode === "daily" ? Number(dailyGoal) : undefined,
+        weekly_calorie_goal: goalMode === "weekly" ? Number(weeklyGoal) : undefined,
       });
-
-      if (!response.ok) {
-        const payload = await response.json();
-        throw new Error(payload.detail ?? "Could not save goal.");
-      }
-
-      const nextSummary = (await response.json()) as DailySummary;
-      setSummary(nextSummary);
-      setDailyGoal(String(nextSummary.daily_goal));
-      setWeeklyGoal(String(nextSummary.weekly_goal));
+      setSummary(s);
+      setDailyGoal(String(s.daily_goal));
+      setWeeklyGoal(String(s.weekly_goal));
       setMessage("Saved goal");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save goal.");
-    }
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not save goal."); }
   }
 
   async function submitPartnerName(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setNameError("");
-    setNameMessage("");
+    setNameError(""); setNameMessage("");
     try {
-      const response = await fetch(`${API_BASE_URL}/settings`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ partner_name: partnerName.trim() }),
-      });
-      if (!response.ok) {
-        const payload = await response.json();
-        throw new Error(payload.detail ?? "Could not save.");
-      }
+      await updateSettings({ partner_name: partnerName.trim() });
       setNameMessage("Saved");
-    } catch (caught) {
-      setNameError(caught instanceof Error ? caught.message : "Could not save.");
-    }
+    } catch (e) { setNameError(e instanceof Error ? e.message : "Could not save."); }
   }
 
   async function submitWeekStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setWeekError("");
-    setWeekMessage("");
+    setWeekError(""); setWeekMessage("");
     try {
-      const response = await fetch(`${API_BASE_URL}/settings`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ week_start_day: weekStartDay }),
-      });
-      if (!response.ok) {
-        const payload = await response.json();
-        throw new Error(payload.detail ?? "Could not save.");
-      }
-      const nextSummary = (await response.json()) as DailySummary;
-      setSummary(nextSummary);
+      const s = await updateSettings({ week_start_day: weekStartDay });
+      setSummary(s);
       setWeekMessage("Saved");
-    } catch (caught) {
-      setWeekError(caught instanceof Error ? caught.message : "Could not save.");
-    }
+    } catch (e) { setWeekError(e instanceof Error ? e.message : "Could not save."); }
   }
 
   return (
@@ -126,19 +85,11 @@ export default function GoalsPage() {
         </div>
         <label className="stackedField">
           <span>Partner&apos;s name (shown on dashboard)</span>
-          <input
-            placeholder="e.g. Priya"
-            type="text"
-            value={partnerName}
-            onChange={(e) => setPartnerName(e.target.value)}
-          />
+          <input placeholder="e.g. Priya" type="text" value={partnerName} onChange={(e) => setPartnerName(e.target.value)} />
         </label>
-        <button type="submit">
-          <Save size={18} />
-          Save
-        </button>
-        {nameMessage ? <p className="success">{nameMessage}</p> : null}
-        {nameError ? <p className="error">{nameError}</p> : null}
+        <button type="submit"><Save size={18} />Save</button>
+        {nameMessage && <p className="success">{nameMessage}</p>}
+        {nameError && <p className="error">{nameError}</p>}
       </form>
 
       <form className="panel settingsForm" onSubmit={submitSettings}>
@@ -148,44 +99,25 @@ export default function GoalsPage() {
         </div>
         <div className="toggleGroup">
           <label>
-            <input
-              checked={goalMode === "daily"}
-              name="goalMode"
-              onChange={() => setGoalMode("daily")}
-              type="radio"
-            />
+            <input checked={goalMode === "daily"} name="goalMode" onChange={() => setGoalMode("daily")} type="radio" />
             Daily
           </label>
           <label>
-            <input
-              checked={goalMode === "weekly"}
-              name="goalMode"
-              onChange={() => setGoalMode("weekly")}
-              type="radio"
-            />
+            <input checked={goalMode === "weekly"} name="goalMode" onChange={() => setGoalMode("weekly")} type="radio" />
             Weekly
           </label>
         </div>
         <label className="stackedField">
           <span>{goalMode === "daily" ? "Daily calories" : "Weekly calories"}</span>
           <input
-            min="1"
-            step="1"
-            type="number"
+            min="1" step="1" type="number"
             value={goalMode === "daily" ? dailyGoal : weeklyGoal}
-            onChange={(event) =>
-              goalMode === "daily"
-                ? setDailyGoal(event.target.value)
-                : setWeeklyGoal(event.target.value)
-            }
+            onChange={(e) => goalMode === "daily" ? setDailyGoal(e.target.value) : setWeeklyGoal(e.target.value)}
           />
         </label>
-        <button type="submit">
-          <Save size={18} />
-          Save goal
-        </button>
-        {message ? <p className="success">{message}</p> : null}
-        {error ? <p className="error">{error}</p> : null}
+        <button type="submit"><Save size={18} />Save goal</button>
+        {message && <p className="success">{message}</p>}
+        {error && <p className="error">{error}</p>}
       </form>
 
       <form className="panel settingsForm" onSubmit={submitWeekStart}>
@@ -195,48 +127,28 @@ export default function GoalsPage() {
         </div>
         <label className="stackedField">
           <span>First day of the week</span>
-          <select
-            value={weekStartDay}
-            onChange={(event) => setWeekStartDay(Number(event.target.value))}
-          >
-            {DAY_NAMES.map((name, index) => (
-              <option key={index} value={index}>
-                {name}
-              </option>
-            ))}
+          <select value={weekStartDay} onChange={(e) => setWeekStartDay(Number(e.target.value))}>
+            {DAY_NAMES.map((name, i) => <option key={i} value={i}>{name}</option>)}
           </select>
         </label>
-        <button type="submit">
-          <Save size={18} />
-          Save
-        </button>
-        {weekMessage ? <p className="success">{weekMessage}</p> : null}
-        {weekError ? <p className="error">{weekError}</p> : null}
+        <button type="submit"><Save size={18} />Save</button>
+        {weekMessage && <p className="success">{weekMessage}</p>}
+        {weekError && <p className="error">{weekError}</p>}
       </form>
 
-      {summary ? (
+      {summary && (
         <section className="panel">
           <div className="summaryBand compact">
-            <div>
-              <span className="metricLabel">Daily baseline</span>
-              <strong>{summary.daily_goal}</strong>
-            </div>
-            <div>
-              <span className="metricLabel">Weekly goal</span>
-              <strong>{summary.weekly_goal}</strong>
-            </div>
-            <div>
-              <span className="metricLabel">Today target</span>
-              <strong>{summary.adjusted_goal}</strong>
-            </div>
+            <div><span className="metricLabel">Daily baseline</span><strong>{summary.daily_goal}</strong></div>
+            <div><span className="metricLabel">Weekly goal</span><strong>{summary.weekly_goal}</strong></div>
+            <div><span className="metricLabel">Today target</span><strong>{summary.adjusted_goal}</strong></div>
           </div>
           <div className="goalDetails">
             <span>Week {summary.week_start} to {summary.week_end}</span>
             <strong>{summary.week_remaining} left this week</strong>
           </div>
         </section>
-      ) : null}
+      )}
     </section>
   );
 }
-
