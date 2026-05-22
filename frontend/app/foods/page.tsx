@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { BookOpen, Save, Search } from "lucide-react";
+import { BookOpen, Pencil, Save, Search, Trash2, X } from "lucide-react";
 import { API_BASE_URL } from "../config";
 import type { Food, Unit } from "../types";
 
@@ -11,6 +11,7 @@ export default function FoodsPage() {
   const [foodQuantity, setFoodQuantity] = useState("10");
   const [foodUnit, setFoodUnit] = useState<Unit>("g");
   const [foodCalories, setFoodCalories] = useState("58");
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -25,17 +26,42 @@ export default function FoodsPage() {
     loadFoods().catch(() => setError("Backend is not reachable."));
   }, []);
 
+  function startEdit(food: Food) {
+    setEditingId(food.id);
+    setFoodName(food.name);
+    setFoodQuantity(String(food.reference_quantity));
+    setFoodUnit(food.unit as Unit);
+    setFoodCalories(String(food.reference_calories));
+    setMessage("");
+    setError("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setFoodName("almond");
+    setFoodQuantity("10");
+    setFoodUnit("g");
+    setFoodCalories("58");
+    setMessage("");
+    setError("");
+  }
+
   async function submitFood(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setMessage("");
 
+    const validationError = validateFoodForm(foodName, foodQuantity, foodCalories);
+    if (validationError) { setError(validationError); return; }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/foods`, {
-        method: "POST",
+      const url = editingId ? `${API_BASE_URL}/foods/${editingId}` : `${API_BASE_URL}/foods`;
+      const method = editingId ? "PATCH" : "POST";
+      const response = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: foodName,
+          name: foodName.trim(),
           unit: foodUnit,
           reference_quantity: Number(foodQuantity),
           reference_calories: Number(foodCalories),
@@ -44,21 +70,35 @@ export default function FoodsPage() {
 
       if (!response.ok) {
         const payload = await response.json();
-        throw new Error(payload.detail ?? "Could not save food.");
+        throw new Error(friendlyFoodError(payload));
       }
 
       const savedFood = (await response.json()) as Food;
-      setMessage(`Saved ${savedFood.name}`);
+      setMessage(`Saved "${savedFood.name}" successfully.`);
+      setEditingId(null);
       await loadFoods();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save food.");
     }
   }
 
+  async function deleteFood(food: Food) {
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/foods/${food.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error(`Could not delete "${food.name}".`);
+      setMessage(`Deleted "${food.name}".`);
+      if (editingId === food.id) cancelEdit();
+      await loadFoods();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not delete food.");
+    }
+  }
+
   const filteredFoods = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return foods;
-    return foods.filter((food) => food.name.includes(normalizedQuery));
+    const q = query.trim().toLowerCase();
+    return q ? foods.filter((f) => f.name.includes(q)) : foods;
   }, [foods, query]);
 
   return (
@@ -72,16 +112,23 @@ export default function FoodsPage() {
 
       <form className="panel foodForm" onSubmit={submitFood}>
         <div className="panelHeader">
-          <h2>Add or update food</h2>
-          <BookOpen size={18} />
+          <h2>{editingId ? "Edit food" : "Add or update food"}</h2>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {editingId && (
+              <button className="iconButton" onClick={cancelEdit} title="Cancel edit" type="button">
+                <X size={16} />
+              </button>
+            )}
+            <BookOpen size={18} />
+          </div>
         </div>
         <div className="fieldGrid">
           <label>
             <span>Name</span>
             <input
               value={foodName}
-              onChange={(event) => setFoodName(event.target.value)}
-              placeholder="almond"
+              onChange={(e) => setFoodName(e.target.value)}
+              placeholder="e.g. almond"
             />
           </label>
           <label>
@@ -91,15 +138,12 @@ export default function FoodsPage() {
               step="0.01"
               type="number"
               value={foodQuantity}
-              onChange={(event) => setFoodQuantity(event.target.value)}
+              onChange={(e) => setFoodQuantity(e.target.value)}
             />
           </label>
           <label>
             <span>Unit</span>
-            <select
-              value={foodUnit}
-              onChange={(event) => setFoodUnit(event.target.value as Unit)}
-            >
+            <select value={foodUnit} onChange={(e) => setFoodUnit(e.target.value as Unit)}>
               <option value="g">g</option>
               <option value="ml">ml</option>
               <option value="piece">piece</option>
@@ -113,16 +157,16 @@ export default function FoodsPage() {
               step="1"
               type="number"
               value={foodCalories}
-              onChange={(event) => setFoodCalories(event.target.value)}
+              onChange={(e) => setFoodCalories(e.target.value)}
             />
           </label>
         </div>
         <button type="submit">
           <Save size={18} />
-          Save food
+          {editingId ? "Save changes" : "Save food"}
         </button>
-        {message ? <p className="success">{message}</p> : null}
-        {error ? <p className="error">{error}</p> : null}
+        {message && <p className="success">{message}</p>}
+        {error && <p className="error">{error}</p>}
       </form>
 
       <section className="panel">
@@ -134,16 +178,34 @@ export default function FoodsPage() {
           aria-label="Search foods"
           placeholder="Search foods"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
         />
         {filteredFoods.length ? (
           <ul className="foodList">
             {filteredFoods.map((food) => (
-              <li key={food.id}>
+              <li key={food.id} className={`foodListItem ${editingId === food.id ? "editing" : ""}`}>
                 <span>{food.name}</span>
                 <strong>
-                  {food.reference_calories} / {food.reference_quantity} {food.unit}
+                  {food.reference_calories} kcal / {food.reference_quantity} {food.unit}
                 </strong>
+                <div className="foodListActions">
+                  <button
+                    className="iconButton"
+                    onClick={() => startEdit(food)}
+                    title={`Edit ${food.name}`}
+                    type="button"
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    className="iconButton danger"
+                    onClick={() => deleteFood(food)}
+                    title={`Delete ${food.name}`}
+                    type="button"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -155,3 +217,29 @@ export default function FoodsPage() {
   );
 }
 
+function validateFoodForm(name: string, quantity: string, calories: string): string | null {
+  if (!name.trim()) return "Please enter a food name.";
+  const qty = Number(quantity);
+  if (!quantity || isNaN(qty) || qty <= 0) return "Quantity must be greater than zero.";
+  const cal = Number(calories);
+  if (calories === "" || isNaN(cal) || cal < 0) return "Calories must be zero or more.";
+  return null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function friendlyFoodError(payload: any): string {
+  if (typeof payload?.detail === "string") return payload.detail;
+  if (Array.isArray(payload?.detail)) {
+    const first = payload.detail[0];
+    const field = String(first?.loc?.slice(-1)[0] ?? "");
+    const msg = first?.msg ?? "Invalid input.";
+    const labels: Record<string, string> = {
+      name: "Name",
+      reference_quantity: "Quantity",
+      reference_calories: "Calories",
+      unit: "Unit",
+    };
+    return `${labels[field] ?? field}: ${msg}`;
+  }
+  return "Could not save food.";
+}

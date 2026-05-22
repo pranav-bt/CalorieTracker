@@ -15,6 +15,9 @@ export default function GoalsPage() {
   const [weekStartDay, setWeekStartDay] = useState(0);
   const [weekMessage, setWeekMessage] = useState("");
   const [weekError, setWeekError] = useState("");
+  const [partnerName, setPartnerName] = useState("");
+  const [nameMessage, setNameMessage] = useState("");
+  const [nameError, setNameError] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -28,6 +31,7 @@ export default function GoalsPage() {
       setDailyGoal(String(nextSummary.daily_goal));
       setWeeklyGoal(String(nextSummary.weekly_goal));
       setWeekStartDay(nextSummary.week_start_day);
+      setPartnerName(nextSummary.partner_name ?? "");
     }
 
     loadSummary().catch(() => setError("Backend is not reachable."));
@@ -64,6 +68,26 @@ export default function GoalsPage() {
     }
   }
 
+  async function submitPartnerName(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNameError("");
+    setNameMessage("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partner_name: partnerName.trim() }),
+      });
+      if (!response.ok) {
+        const payload = await response.json();
+        throw new Error(payload.detail ?? "Could not save.");
+      }
+      setNameMessage("Saved");
+    } catch (caught) {
+      setNameError(caught instanceof Error ? caught.message : "Could not save.");
+    }
+  }
+
   async function submitWeekStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setWeekError("");
@@ -94,6 +118,28 @@ export default function GoalsPage() {
           <h1>Goals</h1>
         </div>
       </div>
+
+      <form className="panel settingsForm" onSubmit={submitPartnerName}>
+        <div className="panelHeader">
+          <h2>Her name</h2>
+          <Save size={18} />
+        </div>
+        <label className="stackedField">
+          <span>Partner&apos;s name (shown on dashboard)</span>
+          <input
+            placeholder="e.g. Priya"
+            type="text"
+            value={partnerName}
+            onChange={(e) => setPartnerName(e.target.value)}
+          />
+        </label>
+        <button type="submit">
+          <Save size={18} />
+          Save
+        </button>
+        {nameMessage ? <p className="success">{nameMessage}</p> : null}
+        {nameError ? <p className="error">{nameError}</p> : null}
+      </form>
 
       <form className="panel settingsForm" onSubmit={submitSettings}>
         <div className="panelHeader">

@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { API_BASE_URL } from "../config";
+import { MilestonePopup } from "../components/MilestonePopup";
+import { HeartPointsToast } from "../components/HeartPointsToast";
 import type { Food, MealRecord, MealRow, MealSummary, Unit } from "../types";
 
 const emptyMealRow: MealRow = { name: "", quantity: "1", unit: "piece" };
@@ -14,6 +16,8 @@ export default function LogMealPage() {
   const [error, setError] = useState("");
   const [lastMeal, setLastMeal] = useState<MealSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [milestoneToast, setMilestoneToast] = useState<string | null>(null);
+  const [heartPointsEarned, setHeartPointsEarned] = useState<number | null>(null);
 
   async function refreshData() {
     const [foodsResponse, mealsResponse] = await Promise.all([
@@ -54,6 +58,14 @@ export default function LogMealPage() {
   async function submitMeal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+
+    // Client-side validation
+    const validationError = validateMealRows(mealRows, foods);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -62,7 +74,7 @@ export default function LogMealPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: mealRows.map((row) => ({
-            name: row.name,
+            name: row.name.trim().toLowerCase(),
             quantity: Number(row.quantity),
             unit: row.unit,
           })),
@@ -71,10 +83,13 @@ export default function LogMealPage() {
 
       if (!response.ok) {
         const payload = await response.json();
-        throw new Error(payload.detail ?? "Could not log meal.");
+        throw new Error(friendlyApiError(payload));
       }
 
-      setLastMeal(await response.json());
+      const meal = (await response.json()) as MealSummary;
+      setLastMeal(meal);
+      if (meal.milestone) setMilestoneToast(meal.milestone);
+      if (meal.heart_points_earned > 0) setHeartPointsEarned(meal.heart_points_earned);
       setMealRows([emptyMealRow]);
       await refreshData();
     } catch (caught) {
@@ -103,6 +118,12 @@ export default function LogMealPage() {
 
   return (
     <section className="pageStack">
+      {milestoneToast && (
+        <MilestonePopup message={milestoneToast} onDismiss={() => setMilestoneToast(null)} />
+      )}
+      {heartPointsEarned !== null && (
+        <HeartPointsToast points={heartPointsEarned} onDismiss={() => setHeartPointsEarned(null)} />
+      )}
       <div className="pageHeader">
         <div>
           <p className="eyebrow">Today only</p>
@@ -230,6 +251,35 @@ export default function LogMealPage() {
   );
 }
 
+function validateMealRows(rows: MealRow[], foods: Food[]): string | null {
+  const knownNames = new Set(foods.map((f) => f.name));
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const label = rows.length > 1 ? `Row ${i + 1}: ` : "";
+    if (!row.name.trim()) return `${label}Please enter a food name.`;
+    if (!knownNames.has(row.name.trim().toLowerCase()))
+      return `${label}"${row.name}" is not in your food database. Add it first.`;
+    const qty = Number(row.quantity);
+    if (!row.quantity || isNaN(qty) || qty <= 0)
+      return `${label}Quantity must be greater than zero.`;
+  }
+  return null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function friendlyApiError(payload: any): string {
+  if (typeof payload?.detail === "string") return payload.detail;
+  if (Array.isArray(payload?.detail)) {
+    return payload.detail
+      .map((e: { loc?: (string | number)[]; msg?: string }) => {
+        const field = e.loc?.slice(-1)[0];
+        return field !== undefined ? `${field}: ${e.msg}` : e.msg;
+      })
+      .join("; ");
+  }
+  return "Could not log meal.";
+}
+
 function MealItems({
   meal,
   compact = false,
@@ -240,8 +290,8 @@ function MealItems({
   return (
     <>
       <ul className={compact ? "inlineItems" : "items"}>
-        {meal.items.map((item) => (
-          <li key={`${item.name}-${item.unit}-${item.quantity}`}>
+        {meal.items.map((item, idx) => (
+          <li key={idx}>
             <span>
               {item.quantity} {item.unit} {item.name}
             </span>

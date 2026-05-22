@@ -29,6 +29,8 @@ class MealSummary(BaseModel):
     total_calories: int
     daily_total: int
     remaining: int
+    milestone: str | None = None
+    heart_points_earned: int = 0
 
 
 class MealRecord(BaseModel):
@@ -52,6 +54,16 @@ class DailySummary(BaseModel):
     week_start: str
     week_end: str
     week_start_day: int
+    greeting: str
+    affirmation: str
+    streak: int
+    partner_name: str
+    end_of_day_note: str | None = None
+    days_logged_this_week: int
+    weekly_report_message: str | None = None
+    current_challenge: str
+    challenge_completed: bool
+    heart_points: int
 
 
 class HistoryDay(BaseModel):
@@ -84,6 +96,7 @@ class SettingsUpdate(BaseModel):
     weekly_calorie_goal: int | None = Field(default=None, gt=0)
     history_retention_days: int | None = Field(default=None, ge=0)
     week_start_day: int | None = Field(default=None, ge=0, le=6)
+    partner_name: str | None = None
 
 
 class SettingsOut(BaseModel):
@@ -92,3 +105,37 @@ class SettingsOut(BaseModel):
     weekly_calorie_goal: int
     history_retention_days: int
     week_start_day: int
+    partner_name: str
+
+
+class HeartPointEntry(BaseModel):
+    id: int
+    source: str
+    points: int
+    created_at: str
+
+
+class RewardItem(BaseModel):
+    id: int
+    name: str
+    cost: int
+
+
+class Redemption(BaseModel):
+    id: int
+    reward: str
+    points_spent: int
+    created_at: str
+    claimed: bool
+    claimed_at: str | None = None
+
+
+class HeartPointsOut(BaseModel):
+    balance: int
+    log: list[HeartPointEntry]
+    rewards: list[RewardItem]
+    redemptions: list[Redemption]
+
+
+class RedeemRequest(BaseModel):
+    reward_id: int

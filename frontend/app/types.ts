@@ -21,6 +21,8 @@ export type MealSummary = {
   total_calories: number;
   daily_total: number;
   remaining: number;
+  milestone?: string | null;
+  heart_points_earned: number;
 };
 
 export type MealRecord = {
@@ -44,6 +46,45 @@ export type DailySummary = {
   week_start: string;
   week_end: string;
   week_start_day: number;
+  greeting: string;
+  affirmation: string;
+  streak: number;
+  partner_name: string;
+  end_of_day_note: string | null;
+  days_logged_this_week: number;
+  weekly_report_message: string | null;
+  current_challenge: string;
+  challenge_completed: boolean;
+  heart_points: number;
+};
+
+export type HeartPointEntry = {
+  id: number;
+  source: string;
+  points: number;
+  created_at: string;
+};
+
+export type RewardItem = {
+  id: number;
+  name: string;
+  cost: number;
+};
+
+export type Redemption = {
+  id: number;
+  reward: string;
+  points_spent: number;
+  created_at: string;
+  claimed: boolean;
+  claimed_at: string | null;
+};
+
+export type HeartPointsBalance = {
+  balance: number;
+  log: HeartPointEntry[];
+  rewards: RewardItem[];
+  redemptions: Redemption[];
 };
 
 export type HistoryDay = {
@@ -65,5 +106,6 @@ export type Settings = {
   weekly_calorie_goal: number;
   history_retention_days: number;
   week_start_day: number;
+  partner_name: string;
 };
 

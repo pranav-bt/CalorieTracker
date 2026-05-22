@@ -663,6 +663,552 @@ button:disabled {
   margin-top: 0;
 }
 
+/* phase 1: personal features */
+
+.pageHeaderRight {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.streakBadge {
+  align-items: center;
+  background: #fff3e0;
+  border: 1px solid #ffd5a0;
+  border-radius: 20px;
+  color: #c87000;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 5px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.greetingCard {
+  background: linear-gradient(135deg, #f0f7ed, #e6f2e6);
+  border: 1px solid #c8dfc4;
+  border-radius: 12px;
+  padding: 18px 22px;
+}
+
+.greetingCard p {
+  color: var(--accent-dark);
+  font-size: 16px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.affirmationCard {
+  background: #fffbf0;
+  border: 1px solid #eddcaa;
+  border-left: 4px solid var(--gold);
+  border-radius: 8px;
+  padding: 14px 18px;
+}
+
+.affirmationCard p {
+  color: var(--ink);
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0;
+  opacity: 0.85;
+}
+
+.endOfDayCard {
+  background: #f5f0ff;
+  border: 1px solid #d8ccf5;
+  border-left: 4px solid #9b7fe8;
+  border-radius: 8px;
+  padding: 14px 18px;
+}
+
+.endOfDayCard p {
+  color: #3d2e6b;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* milestone toast */
+
+.toast {
+  animation: slideUp 220ms ease;
+  background: var(--accent-dark);
+  border-radius: 10px;
+  bottom: 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  color: white;
+  cursor: pointer;
+  left: 50%;
+  max-width: 420px;
+  padding: 14px 20px;
+  position: fixed;
+  transform: translateX(-50%);
+  width: calc(100% - 48px);
+  z-index: 200;
+}
+
+.toast p {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+  text-align: center;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* love note popup */
+
+.loveNoteOverlay {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 300;
+}
+
+.loveNoteCard {
+  animation: popIn 260ms ease;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+  max-width: 360px;
+  padding: 36px 32px 32px;
+  position: relative;
+  text-align: center;
+  width: calc(100% - 48px);
+}
+
+.loveNoteClose {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  min-height: 0;
+  padding: 4px;
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: auto;
+}
+
+.loveNoteHeart {
+  font-size: 36px;
+  margin: 0 0 14px;
+}
+
+.loveNoteText {
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.milestoneCard {
+  animation: popIn 260ms ease;
+  background: var(--accent-dark);
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+  max-width: 380px;
+  padding: 40px 36px 36px;
+  position: relative;
+  text-align: center;
+  width: calc(100% - 48px);
+}
+
+.milestoneCard .loveNoteClose {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.milestoneIcon {
+  font-size: 48px;
+  margin: 0 0 16px;
+}
+
+.milestoneText {
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* weekly report card */
+
+.weekReportStats {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.weekReportStats strong {
+  display: block;
+  font-size: 22px;
+}
+
+.weekReportMessage {
+  border-top: 1px solid var(--line);
+  color: var(--accent-dark);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-top: 16px;
+  padding-top: 14px;
+}
+
+/* weekly challenge */
+
+.challengePanel .panelHeader {
+  align-items: center;
+}
+
+.challengeToggle {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  min-height: 0;
+  padding: 0;
+  width: auto;
+}
+
+.challengeToggle.done {
+  color: var(--accent);
+}
+
+.challengeText {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.55;
+  margin-top: 12px;
+}
+
+.challengeDone {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.challengeCompletedNote {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+/* heart points toast */
+
+.heartToast {
+  align-items: center;
+  animation: heartSlideUp 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: linear-gradient(135deg, #c0366a, #e05080);
+  border-radius: 50px;
+  bottom: 28px;
+  box-shadow: 0 4px 24px rgba(192, 54, 106, 0.35);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  left: 50%;
+  padding: 12px 22px;
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 250;
+}
+
+.heartToastBurst {
+  animation: heartPop 600ms ease forwards;
+  display: inline-block;
+  font-size: 20px;
+}
+
+.heartToastText {
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@keyframes heartSlideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px) scale(0.85); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes heartPop {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.5); }
+  60%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+/* heart points */
+
+.heartBadge {
+  align-items: center;
+  background: #fff0f5;
+  border: 1px solid #f5b8cc;
+  border-radius: 20px;
+  color: #c0366a;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 5px;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.heartBadge:hover {
+  background: #fde0ec;
+}
+
+.heartBalanceCard {
+  align-items: center;
+  background: linear-gradient(135deg, #fff0f5, #fce4ef);
+  border: 1px solid #f5b8cc;
+  border-radius: 14px;
+  display: flex;
+  gap: 20px;
+  padding: 24px 28px;
+}
+
+.heartBalanceIcon {
+  color: #c0366a;
+  flex-shrink: 0;
+}
+
+.heartBalanceNum {
+  display: block;
+  font-size: 36px;
+  font-weight: 800;
+  color: #c0366a;
+  line-height: 1;
+}
+
+.rewardGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  margin-top: 16px;
+}
+
+.rewardCard {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.rewardCard.affordable {
+  border-color: #f5b8cc;
+  background: #fff8fb;
+}
+
+.rewardCard.locked {
+  opacity: 0.65;
+}
+
+.rewardName {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.rewardCost {
+  align-items: center;
+  color: #c0366a;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 4px;
+  margin: 0;
+}
+
+.rewardBtn {
+  background: #c0366a;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: auto;
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.rewardBtn:disabled {
+  background: var(--line);
+  color: var(--muted);
+  cursor: default;
+}
+
+.rewardBtn:not(:disabled):hover {
+  background: #a02a57;
+}
+
+.heartLog {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.heartLogItem {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 0;
+}
+
+.heartLogItem:first-child {
+  border-top: 0;
+}
+
+.heartLogSource {
+  flex: 1;
+  font-size: 14px;
+}
+
+.heartLogPoints {
+  color: #c0366a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.heartLogDate {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.claimedTag {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+/* pending rewards */
+
+.pendingRewardsPanel {
+  border: 1px solid #f5b8cc;
+}
+
+.pendingRewardsHint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.pendingList {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.pendingItem {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.pendingItem:first-child {
+  border-top: 0;
+}
+
+.pendingItemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pendingItemName {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pendingItemMeta {
+  align-items: center;
+  color: #c0366a;
+  display: flex;
+  font-size: 12px;
+  gap: 4px;
+}
+
+.claimBtn {
+  align-items: center;
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  display: flex;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 14px;
+}
+
+.claimBtn:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+.claimBtn:disabled {
+  background: var(--line);
+  color: var(--muted);
+}
+
+/* food list edit/delete */
+
+.foodListItem {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+
+.foodListItem.editing {
+  background: #f0f7ed;
+  border-radius: 6px;
+  margin: 0 -8px;
+  padding: 8px;
+}
+
+.foodListItem span {
+  flex: 1;
+}
+
+.foodListItem strong {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.foodListActions {
+  display: flex;
+  gap: 4px;
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
 @media (max-width: 760px) {
   .appShell {
     grid-template-columns: 1fr;

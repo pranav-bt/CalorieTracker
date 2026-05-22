@@ -5,6 +5,8 @@ import sqlite3
 from pathlib import Path
 from typing import Iterable, Iterator
 
+from .messages import AFFIRMATIONS, DAY_GREETINGS, REWARDS
+
 DB_PATH = Path(__file__).resolve().parents[1] / "calorie_tracker.db"
 
 
@@ -85,6 +87,77 @@ def init_db() -> None:
             "week_start_day",
             "INTEGER NOT NULL DEFAULT 0",
         )
+        _ensure_column(
+            conn,
+            "settings",
+            "partner_name",
+            "TEXT NOT NULL DEFAULT ''",
+        )
+        _ensure_column(
+            conn,
+            "settings",
+            "challenge_completed_week",
+            "TEXT NOT NULL DEFAULT ''",
+        )
+        _init_messages(conn)
+        _init_heart_points(conn)
+
+
+def _init_messages(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS day_greetings (
+            day_of_week INTEGER PRIMARY KEY,
+            message     TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS affirmations (
+            id      INTEGER PRIMARY KEY,
+            text    TEXT NOT NULL
+        );
+        """
+    )
+
+    conn.executemany(
+        "INSERT OR REPLACE INTO day_greetings (day_of_week, message) VALUES (?, ?)",
+        DAY_GREETINGS,
+    )
+    conn.executemany(
+        "INSERT OR REPLACE INTO affirmations (id, text) VALUES (?, ?)",
+        AFFIRMATIONS,
+    )
+
+
+def _init_heart_points(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS heart_points_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            source     TEXT    NOT NULL,
+            points     INTEGER NOT NULL,
+            created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS rewards_catalogue (
+            id    INTEGER PRIMARY KEY,
+            name  TEXT    NOT NULL,
+            cost  INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS redemptions (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            reward       TEXT    NOT NULL,
+            points_spent INTEGER NOT NULL,
+            created_at   TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    _ensure_column(conn, "redemptions", "claimed", "INTEGER NOT NULL DEFAULT 0")
+    _ensure_column(conn, "redemptions", "claimed_at", "TEXT")
+    conn.executemany(
+        "INSERT OR REPLACE INTO rewards_catalogue (id, name, cost) VALUES (?, ?, ?)",
+        [(i + 1, name, cost) for i, (name, cost) in enumerate(REWARDS)],
+    )
 
 
 def _ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
