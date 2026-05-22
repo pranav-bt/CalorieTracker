@@ -22,9 +22,81 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
 button,
-input {
+input,
+select {
   font: inherit;
+}
+
+.appShell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.sideNav {
+  background: #ffffff;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 22px 16px;
+}
+
+.brand {
+  align-items: center;
+  color: var(--accent-dark);
+  display: flex;
+  font-size: 18px;
+  font-weight: 800;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.sideNav nav {
+  display: grid;
+  gap: 6px;
+}
+
+.navLink {
+  align-items: center;
+  border-radius: 8px;
+  color: var(--muted);
+  display: flex;
+  font-weight: 700;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 10px;
+}
+
+.navLink.active,
+.navLink:hover {
+  background: #eef2eb;
+  color: var(--accent-dark);
+}
+
+.pageShell {
+  min-width: 0;
+  padding: 32px;
+}
+
+.pageStack {
+  display: grid;
+  gap: 22px;
+  margin: 0 auto;
+  max-width: 980px;
+}
+
+.pageHeader {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .shell {
@@ -48,7 +120,8 @@ input {
 .summaryBand,
 .totalLine,
 .items li,
-.historyList li {
+.historyList li,
+.foodList li {
   display: flex;
   align-items: center;
 }
@@ -57,7 +130,8 @@ input {
 .panelHeader,
 .totalLine,
 .items li,
-.historyList li {
+.historyList li,
+.foodList li {
   justify-content: space-between;
 }
 
@@ -129,6 +203,8 @@ h2 {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
+  display: grid;
+  gap: 16px;
   padding: 20px;
 }
 
@@ -144,7 +220,37 @@ h2 {
   gap: 10px;
 }
 
-input {
+.mealTable {
+  display: grid;
+  gap: 8px;
+}
+
+.tableHead,
+.tableRow {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(90px, 0.7fr) minmax(90px, 0.7fr) 40px;
+}
+
+.tableHead {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tableRow {
+  align-items: center;
+}
+
+.actionRow {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+input,
+select {
+  background: white;
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--ink);
@@ -169,6 +275,18 @@ button {
   padding: 0 16px;
 }
 
+.textButton {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 8px;
+  color: white;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+}
+
 button:disabled {
   cursor: wait;
   opacity: 0.65;
@@ -188,6 +306,10 @@ button:disabled {
   color: var(--danger);
 }
 
+.iconButton:disabled {
+  cursor: not-allowed;
+}
+
 .panel,
 .history {
   background: var(--panel);
@@ -197,26 +319,206 @@ button:disabled {
   padding: 20px;
 }
 
+.foodForm {
+  display: grid;
+  gap: 16px;
+}
+
+.settingsForm {
+  display: grid;
+  gap: 14px;
+}
+
+.weekMetrics {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.weekMetrics strong {
+  display: block;
+  font-size: 24px;
+}
+
+.barChart {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  height: 180px;
+  margin-top: 20px;
+}
+
+.barItem {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  height: 100%;
+  min-width: 0;
+  text-align: center;
+}
+
+.barTrack {
+  align-items: end;
+  background: #eef2eb;
+  border: 1px solid var(--line);
+  border-radius: 8px 8px 4px 4px;
+  display: flex;
+  height: 140px;
+  overflow: hidden;
+}
+
+.barTrack span {
+  background: var(--accent);
+  display: block;
+  width: 100%;
+}
+
+.barItem small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.fieldGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 0.7fr) minmax(0, 0.8fr);
+}
+
+.fieldGrid label {
+  min-width: 0;
+}
+
+.fieldGrid span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.fieldGrid input,
+.fieldGrid select {
+  width: 100%;
+}
+
+.toggleGroup {
+  background: #eef2eb;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+}
+
+.toggleGroup label {
+  align-items: center;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 36px;
+}
+
+.toggleGroup label:has(input:checked) {
+  background: white;
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+.toggleGroup input {
+  flex: 0;
+  min-height: auto;
+  width: auto;
+}
+
+.stackedField span {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.stackedField input {
+  width: 100%;
+}
+
+.goalDetails {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+  padding-top: 12px;
+}
+
+.goalDetails span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.summaryBand.compact {
+  margin-top: 0;
+}
+
 .history {
   margin-top: 0;
 }
 
 .items,
-.historyList {
+.inlineItems,
+.historyList,
+.mealList,
+.foodList {
   list-style: none;
   margin: 16px 0 0;
   padding: 0;
 }
 
 .items li,
-.historyList li {
+.inlineItems li,
+.historyList li,
+.mealList li,
+.foodList li {
   border-top: 1px solid var(--line);
+  gap: 12px;
   min-height: 44px;
 }
 
 .items li:first-child,
-.historyList li:first-child {
+.inlineItems li:first-child,
+.historyList li:first-child,
+.mealList li:first-child,
+.foodList li:first-child {
   border-top: 0;
+}
+
+.mealList li {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.inlineItems {
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 4px;
+}
+
+.inlineItems li {
+  border-top: 0;
+  min-height: 0;
+}
+
+.foodList strong {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
 }
 
 .totalLine {
@@ -231,12 +533,166 @@ button:disabled {
   margin-top: 10px;
 }
 
+.success {
+  color: var(--accent-dark);
+  font-size: 14px;
+}
+
 .muted {
   color: var(--muted);
   margin-top: 16px;
 }
 
+.sideDivider {
+  border-top: 1px solid var(--line);
+  margin: 20px 0;
+}
+
+.searchRow {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.dateRangeRow {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.dateField {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.dateField span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dateField input {
+  min-height: 40px;
+  width: auto;
+}
+
+.clearBtn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.clearBtn:hover {
+  background: #eef2eb;
+  color: var(--ink);
+}
+
+/* history day rows */
+
+.historyList li.historyDayItem {
+  border-top: 1px solid var(--line);
+  display: block;
+  min-height: 0;
+}
+
+.historyList li.historyDayItem:first-child {
+  border-top: 0;
+}
+
+.historyDayRow {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.historyDayToggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  flex: 1;
+  font-weight: 400;
+  gap: 10px;
+  justify-content: flex-start;
+  min-height: 44px;
+  padding: 0;
+}
+
+.historyDayToggle span {
+  flex: 1;
+  text-align: left;
+}
+
+.historyDayToggle strong {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.historyDayToggle svg {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.dayMealsPanel {
+  border-top: 1px solid var(--line);
+  padding: 8px 0 4px;
+}
+
+.dayMealsPanel .mealList {
+  margin-top: 0;
+}
+
+.dayMealsPanel .mealList li:first-child {
+  border-top: 0;
+}
+
+.retentionHint {
+  font-size: 13px;
+  margin-top: 0;
+}
+
 @media (max-width: 760px) {
+  .appShell {
+    grid-template-columns: 1fr;
+  }
+
+  .sideNav {
+    border-bottom: 1px solid var(--line);
+    border-right: 0;
+    padding: 14px;
+  }
+
+  .sideNav nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .navLink {
+    flex: 0 0 auto;
+  }
+
+  .pageShell {
+    padding: 20px;
+  }
+
+  .pageHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .shell {
     grid-template-columns: 1fr;
     padding: 20px;
@@ -252,6 +708,26 @@ button:disabled {
     flex-direction: column;
   }
 
+  .tableHead {
+    display: none;
+  }
+
+  .tableRow {
+    grid-template-columns: 1fr;
+  }
+
+  .actionRow {
+    flex-direction: column;
+  }
+
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .weekMetrics {
+    grid-template-columns: 1fr;
+  }
+
   button {
     width: 100%;
   }
@@ -260,4 +736,3 @@ button:disabled {
     width: 40px;
   }
 }
-

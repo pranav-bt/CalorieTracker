@@ -3,18 +3,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-FOOD_DATABASE = {
-    "egg": {"unit": "piece", "calories": 70},
-    "toast": {"unit": "slice", "calories": 80},
-    "milk": {"unit": "100ml", "calories": 50},
-}
-
 SYNONYMS = {
     "eggs": "egg",
     "bread": "toast",
 }
 
-SUPPORTED_UNITS = {"piece", "pieces", "slice", "slices", "ml", "g"}
+SUPPORTED_UNITS = {"piece", "pieces", "slice", "slices", "ml", "g", "gm"}
 TOKEN_RE = re.compile(r"[a-zA-Z]+|\d+(?:\.\d+)?")
 
 
@@ -26,6 +20,9 @@ class ParsedItem:
     calories: int
 
 
+FoodDatabase = dict[str, dict[str, int | float | str]]
+
+
 def _normalize_food(token: str) -> str:
     normalized = token.lower()
     return SYNONYMS.get(normalized, normalized)
@@ -35,7 +32,7 @@ def _display_quantity(quantity: float) -> int | float:
     return int(quantity) if quantity.is_integer() else quantity
 
 
-def parse_meal_text(text: str) -> list[dict]:
+def parse_meal_text(text: str, food_database: FoodDatabase) -> list[dict]:
     tokens = TOKEN_RE.findall(text.lower())
     items: list[ParsedItem] = []
     pending_quantity: float | None = None
@@ -51,14 +48,25 @@ def parse_meal_text(text: str) -> list[dict]:
             continue
 
         name = _normalize_food(token)
-        food = FOOD_DATABASE.get(name)
+        food = food_database.get(name)
         if not food:
             continue
 
-        quantity = pending_quantity if pending_quantity is not None else 1.0
-        unit = _normalize_unit(pending_unit or food["unit"])
-        per_unit_calories = int(food["calories"])
-        calories = round(quantity * per_unit_calories)
+        reference_quantity = float(food["reference_quantity"])
+        if pending_quantity is None or pending_unit is None:
+            pending_quantity = None
+            pending_unit = None
+            continue
+
+        quantity = pending_quantity
+        unit = _normalize_unit(pending_unit)
+        if unit != food["unit"]:
+            pending_quantity = None
+            pending_unit = None
+            continue
+
+        reference_calories = int(food["reference_calories"])
+        calories = round((quantity / reference_quantity) * reference_calories)
 
         items.append(
             ParsedItem(
@@ -91,9 +99,10 @@ def _is_number(token: str) -> bool:
 
 
 def _normalize_unit(unit: str) -> str:
+    if unit == "gm":
+        return "g"
     if unit == "pieces":
         return "piece"
     if unit == "slices":
         return "slice"
     return unit
-

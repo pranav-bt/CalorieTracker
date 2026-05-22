@@ -1,6 +1,8 @@
 # Python
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.pytest_tmp/
 .venv/
 venv/
 *.db
@@ -9,6 +11,7 @@ venv/
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -17,4 +20,3 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local
-

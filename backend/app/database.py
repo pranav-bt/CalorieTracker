@@ -1,17 +1,23 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import sqlite3
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Iterator
 
 DB_PATH = Path(__file__).resolve().parents[1] / "calorie_tracker.db"
 
 
-def get_connection() -> sqlite3.Connection:
+@contextmanager
+def get_connection() -> Iterator[sqlite3.Connection]:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def init_db() -> None:
@@ -40,12 +46,55 @@ def init_db() -> None:
                 daily_calorie_goal INTEGER NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS foods (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                unit TEXT NOT NULL,
+                reference_quantity REAL NOT NULL,
+                reference_calories INTEGER NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
             INSERT OR IGNORE INTO settings (id, daily_calorie_goal)
             VALUES (1, 2000);
+
+            INSERT OR IGNORE INTO foods
+                (name, unit, reference_quantity, reference_calories)
+            VALUES
+                ('egg', 'piece', 1, 70),
+                ('toast', 'slice', 1, 80),
+                ('milk', 'ml', 100, 50);
             """
         )
+        _ensure_column(conn, "settings", "goal_mode", "TEXT NOT NULL DEFAULT 'daily'")
+        _ensure_column(
+            conn,
+            "settings",
+            "weekly_calorie_goal",
+            "INTEGER NOT NULL DEFAULT 14000",
+        )
+        _ensure_column(
+            conn,
+            "settings",
+            "history_retention_days",
+            "INTEGER NOT NULL DEFAULT 0",
+        )
+        _ensure_column(
+            conn,
+            "settings",
+            "week_start_day",
+            "INTEGER NOT NULL DEFAULT 0",
+        )
+
+
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    columns = {
+        row["name"]
+        for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+    }
+    if column not in columns:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 
 def rows_to_dicts(rows: Iterable[sqlite3.Row]) -> list[dict]:
     return [dict(row) for row in rows]
-
