@@ -1,7 +1,11 @@
 "use client";
 
 import { Capacitor } from "@capacitor/core";
-import { calculateNutritionPlan } from "../domain/nutrition";
+import { calculateNutritionPlan, retargetNutritionPlan } from "../domain/nutrition";
+import {
+  calculateNutritionTrendAdjustment,
+  type NutritionTrendDecision,
+} from "../domain/nutritionRecalibration";
 import type {
   BodyMeasurement,
   MacroCalculationResult,
@@ -149,7 +153,7 @@ export async function calculateAndSaveNutritionPlan(
 ): Promise<StoredNutritionPlan> {
   requireAndroid();
   const db = await getDb();
-  const result = calculateNutritionPlan({
+  const calculationInput = {
     as_of_date: today(),
     birth_date: profile.birth_date,
     metabolic_sex: profile.metabolic_sex,
@@ -163,12 +167,53 @@ export async function calculateAndSaveNutritionPlan(
     preferred_workout_days: profile.preferred_workout_days,
     flex_days_per_week: profile.flex_days_per_week,
     flex_day_weekday: profile.flex_day_weekday,
-  });
+  } as const;
+  let result = calculateNutritionPlan(calculationInput);
 
   const { values: previousRows } = await db.query(
     "SELECT * FROM nutrition_plans WHERE is_active=1 ORDER BY id DESC LIMIT 1"
   );
   const previous = previousRows?.[0];
+  let trendDecision: NutritionTrendDecision | null = null;
+  if (previous && source === "recalibration") {
+    const [weightRows, calorieRows] = await Promise.all([
+      db.query(
+        `SELECT substr(recorded_at, 1, 10) AS date, weight_kg
+         FROM body_measurements ORDER BY recorded_at DESC, id DESC LIMIT 30`
+      ),
+      db.query(
+        `SELECT date, SUM(total_calories) AS calories
+         FROM meals WHERE date>=date(?, '-30 days') AND date<=?
+         GROUP BY date ORDER BY date`,
+        [today(), today()]
+      ),
+    ]);
+    const historicalWeights = (weightRows.values ?? []).map((row) => ({
+      date: row.date as string,
+      weight_kg: row.weight_kg as number,
+    })).filter((item) => item.date !== today());
+    historicalWeights.push({ date: today(), weight_kg: weightKg });
+    trendDecision = calculateNutritionTrendAdjustment({
+      as_of_date: today(),
+      current_calories: previous.daily_calories as number,
+      goal: profile.primary_goal,
+      target_weight_kg: profile.target_weight_kg,
+      target_date: profile.target_date,
+      weights: historicalWeights,
+      calorie_days: (calorieRows.values ?? []).map((row) => ({
+        date: row.date as string,
+        calories: row.calories as number,
+      })),
+    });
+    if (trendDecision.ready && trendDecision.recommended_calories !== null) {
+      result = retargetNutritionPlan(
+        calculationInput,
+        result,
+        trendDecision.recommended_calories,
+        trendDecision.reason
+      );
+    }
+  }
 
   await db.execute("BEGIN TRANSACTION");
   try {
@@ -210,7 +255,7 @@ export async function calculateAndSaveNutritionPlan(
     );
 
     if (previous && source === "recalibration") {
-      await saveRecalibrationReport(db, previous, planId, result);
+      await saveRecalibrationReport(db, previous, planId, result, trendDecision);
     }
     await db.execute("COMMIT");
     return resultToStoredPlan(planId, source, result);
@@ -224,7 +269,8 @@ async function saveRecalibrationReport(
   db: Awaited<ReturnType<typeof getDb>>,
   previous: Record<string, unknown>,
   newPlanId: number,
-  result: MacroCalculationResult
+  result: MacroCalculationResult,
+  trendDecision: NutritionTrendDecision | null
 ): Promise<void> {
   const comparisons: Array<[string, number, number]> = [
     ["Daily calories", previous.daily_calories as number, result.calories],
@@ -239,9 +285,11 @@ async function saveRecalibrationReport(
       field,
       previous_value: oldValue,
       new_value: newValue,
-      reason: "Profile, goal, timeline, or activity inputs changed; the baseline formula was recalculated.",
+      reason: trendDecision?.ready
+        ? trendDecision.reason
+        : "Profile, goal, timeline, or activity inputs changed; the baseline formula was recalculated.",
     }));
-  const evidence = [
+  const evidence = trendDecision ? [...trendDecision.evidence, trendDecision.reason] : [
     "Current profile and most recent entered body weight",
     "Selected activity level, goal, target date, workout days, and flex-day preference",
     "Insufficient trend history for an adherence-based metabolic adjustment",
@@ -252,8 +300,8 @@ async function saveRecalibrationReport(
   await db.run(
     `INSERT INTO recalibration_reports (
        previous_plan_id, new_plan_id, confidence, summary, evidence_json, changes_json
-     ) VALUES (?, ?, 'low', ?, ?, ?)`,
-    [previous.id, newPlanId, summary, JSON.stringify(evidence), JSON.stringify(changes)]
+     ) VALUES (?, ?, ?, ?, ?, ?)`,
+    [previous.id, newPlanId, trendDecision?.confidence ?? "low", summary, JSON.stringify(evidence), JSON.stringify(changes)]
   );
 }
 

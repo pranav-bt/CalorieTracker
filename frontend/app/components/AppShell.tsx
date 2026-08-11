@@ -11,6 +11,7 @@ import {
   Settings,
   Target,
   PackageOpen,
+  Dumbbell,
 } from "lucide-react";
 import { LoveNotePopup } from "./LoveNotePopup";
 import { getLoveNote } from "../db";
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/foods", label: "Food Database", shortLabel: "Foods", icon: BookOpen },
   { href: "/inventory", label: "Inventory", shortLabel: "Pantry", icon: PackageOpen },
   { href: "/plan", label: "Plan", shortLabel: "Plan", icon: Target },
+  { href: "/workout", label: "Workout", shortLabel: "Train", icon: Dumbbell },
   { href: "/history", label: "History", shortLabel: "History", icon: CalendarDays },
 ];
 

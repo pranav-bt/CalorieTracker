@@ -2,7 +2,7 @@ import { SQLiteDBConnection } from "@capacitor-community/sqlite";
 import { getDb } from "./client";
 import { REWARDS } from "./messages";
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export async function initDb(): Promise<void> {
   const db = await getDb();
@@ -21,6 +21,10 @@ export async function initDb(): Promise<void> {
   if (currentVersion < 2) {
     await runMigration2(db);
     await setSchemaVersion(db, 2);
+  }
+  if (currentVersion < 3) {
+    await runMigration3(db);
+    await setSchemaVersion(db, 3);
   }
 }
 
@@ -335,5 +339,24 @@ async function runMigration2(db: SQLiteDBConnection): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_workout_sessions_date ON workout_sessions(scheduled_for DESC);
 
     INSERT OR IGNORE INTO user_profile (id) VALUES (1);
+  `);
+}
+
+async function runMigration3(db: SQLiteDBConnection): Promise<void> {
+  await addColumnIfMissing(db, "workout_plan_exercises", "target_load_kg", "REAL");
+  await addColumnIfMissing(db, "workout_plan_exercises", "tracking_type", "TEXT NOT NULL DEFAULT 'strength'");
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS workout_recalibration_reports (
+      id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at               TEXT    NOT NULL DEFAULT (datetime('now')),
+      previous_workout_plan_id INTEGER,
+      new_workout_plan_id      INTEGER,
+      confidence               TEXT    NOT NULL,
+      summary                  TEXT    NOT NULL,
+      evidence_json            TEXT    NOT NULL DEFAULT '[]',
+      changes_json             TEXT    NOT NULL DEFAULT '[]',
+      FOREIGN KEY (previous_workout_plan_id) REFERENCES workout_plans(id),
+      FOREIGN KEY (new_workout_plan_id) REFERENCES workout_plans(id)
+    );
   `);
 }

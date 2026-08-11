@@ -24,10 +24,10 @@ This file is the living scope record for the Android private alpha. Update it wh
 - [x] Keep all plan history and expose restore actions for the latest three versions.
 - [x] Add a seven-day calorie/macro routine.
 - [x] Add transparent baseline/profile nutrition recalibration reports.
-- [ ] Add trend-based nutrition recalibration after sufficient weight and adherence history.
+- [x] Add trend-based nutrition recalibration after sufficient weight and adherence history.
 - [x] Add on-device English/Latin nutrition-label OCR with manual confirmation.
-- [ ] Add workout templates and logging for sets, reps, load, RIR/RPE, cardio, pain, and recovery.
-- [ ] Add transparent workout recalibration reports.
+- [x] Add workout templates and logging for sets, reps, load, RIR/RPE, cardio, pain, and recovery.
+- [x] Add transparent workout recalibration reports.
 - [x] Add local inventory.
 - [ ] Add local export/import backup.
 - [ ] Build and test a private Android APK on a physical device.
@@ -66,7 +66,9 @@ This file is the living scope record for the Android private alpha. Update it wh
 - Existing native and web builds use different persistence paths and duplicate business logic. Native/offline behavior is authoritative for this Android fork.
 - Logged meal nutrients must be immutable snapshots; editing a food reference must not rewrite history.
 - Nutrition recalibration needs enough weight and adherence data. When evidence is insufficient, the report must state that only the baseline formula was rerun.
+- Trend recalibration requires at least four weigh-ins spanning ten days, seven logged food days, and 70% logging coverage. Each calorie change is capped at 150 kcal per recalibration.
 - Workout completion may affect workout progression and daily macro distribution, but must not independently claim a change in maintenance calories.
+- Workout progression requires two qualifying logs for the same exercise. Missing effort data prevents progression, and any recent pain report holds progression for review.
 - Local-only data needs an explicit backup path because uninstalling the app can remove its database.
 - Consumer ChatGPT and Claude subscriptions do not provide third-party API usage. Provider integration remains separately gated.
 - The web production build and tests pass. Native Gradle verification requires a local JDK/Android Studio installation; `JAVA_HOME` is currently unavailable in this workspace environment.

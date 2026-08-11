@@ -59,6 +59,23 @@ export function calculateNutritionPlan(input: MacroCalculationInput): MacroCalcu
   };
 }
 
+export function retargetNutritionPlan(
+  input: MacroCalculationInput,
+  base: MacroCalculationResult,
+  calories: number,
+  reason: string
+): MacroCalculationResult {
+  const daily = macrosForCalories(calories, input.weight_kg, input.primary_goal);
+  const days = distributeWeek(input, daily);
+  return {
+    ...base,
+    ...daily,
+    weekly_calories: days.reduce((sum, day) => sum + day.calories, 0),
+    days,
+    explanation: `${base.explanation} ${reason}`,
+  };
+}
+
 function validateInput(input: MacroCalculationInput): void {
   const age = ageOnDate(input.birth_date, input.as_of_date);
   if (age < 18 || age > 100) throw new Error("This calculator currently supports adults aged 18 to 100.");

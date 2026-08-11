@@ -258,3 +258,77 @@ export type WorkoutSet = {
   distance_meters: number | null;
   completed: boolean;
 };
+
+export type ExerciseTrackingType = "strength" | "cardio" | "timed";
+
+export type WorkoutPrescription = {
+  id?: number;
+  exercise_name: string;
+  tracking_type: ExerciseTrackingType;
+  order_index: number;
+  target_sets: number | null;
+  target_reps_min: number | null;
+  target_reps_max: number | null;
+  target_load_kg: number | null;
+  target_rir: number | null;
+  target_rpe: number | null;
+  target_duration_s: number | null;
+  target_distance_m: number | null;
+  notes: string;
+};
+
+export type WorkoutPlanDay = {
+  id?: number;
+  weekday: number;
+  title: string;
+  focus: string;
+  estimated_minutes: number;
+  exercises: WorkoutPrescription[];
+};
+
+export type WorkoutPlan = {
+  id: number;
+  created_at: string;
+  activated_at: string | null;
+  is_active: boolean;
+  source: PlanSource;
+  name: string;
+  goal: string;
+  explanation: string;
+  days: WorkoutPlanDay[];
+};
+
+export type WorkoutSetDraft = Omit<WorkoutSet, "id">;
+
+export type WorkoutExerciseLogDraft = {
+  plan_exercise_id: number | null;
+  exercise_name: string;
+  tracking_type: ExerciseTrackingType;
+  order_index: number;
+  pain_reported: boolean;
+  notes: string;
+  sets: WorkoutSetDraft[];
+};
+
+export type WorkoutSessionDraft = {
+  plan_day_id: number;
+  scheduled_for: string;
+  energy_rating: number | null;
+  recovery_rating: number | null;
+  pain_reported: boolean;
+  notes: string;
+  exercises: WorkoutExerciseLogDraft[];
+};
+
+export type WorkoutSessionSummary = {
+  id: number;
+  scheduled_for: string;
+  title: string;
+  status: string;
+  energy_rating: number | null;
+  recovery_rating: number | null;
+  pain_reported: boolean;
+  completed_sets: number;
+};
+
+export type WorkoutRecalibrationReport = RecalibrationReport;
