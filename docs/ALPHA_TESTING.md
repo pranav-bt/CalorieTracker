@@ -15,10 +15,15 @@ Installing a newer APK with the same debug signature should retain local data. U
 - [ ] Scan a nutrition label, deny/allow camera permission as desired, review the detected values, and confirm before saving.
 - [ ] Log a meal from Home and confirm calorie and macro totals update.
 - [ ] Create a profile and nutrition plan; check all seven routine days.
+- [ ] Confirm plan creation succeeds without a transaction error and Today uses the current weekday&apos;s planned calories.
+- [ ] Leave and reopen Plan; confirm every calculator and body-measurement field retains its last value.
+- [ ] Try the physique outcome/current-state choices and confirm the recommended first phase and explanation make sense.
 - [ ] Switch between fixed-daily and flexible-weekly calorie modes.
+- [ ] Discard the active nutrition plan; confirm the previous plan activates, Undo works, and manual calories take over when no plan remains.
 - [ ] Add weight/body measurements and run recalibration; check that the report explains what changed or why no change was made.
 - [ ] Add, edit, and remove an inventory item.
 - [ ] Generate a workout plan, log sets and recovery/pain data, then run workout recalibration.
+- [ ] Confirm workout creation/logging has no transaction error; restore and discard plans from workout history.
 - [ ] Export a JSON backup from History and save it somewhere outside the app.
 - [ ] Add a disposable record, import the backup, and confirm the disposable record disappears while prior data returns.
 - [ ] Confirm **Undo last import** restores the pre-import state.

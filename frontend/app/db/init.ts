@@ -2,7 +2,7 @@ import { SQLiteDBConnection } from "@capacitor-community/sqlite";
 import { getDb } from "./client";
 import { REWARDS } from "./messages";
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 export async function initDb(): Promise<void> {
   const db = await getDb();
@@ -26,6 +26,11 @@ export async function initDb(): Promise<void> {
     await runMigration3(db);
     await setSchemaVersion(db, 3);
   }
+  if (currentVersion < 4) {
+    await runMigration4(db);
+    await setSchemaVersion(db, 4);
+  }
+  await db.execute(`PRAGMA user_version = ${SCHEMA_VERSION};`, false);
 }
 
 async function setSchemaVersion(db: SQLiteDBConnection, version: number): Promise<void> {
@@ -359,4 +364,46 @@ async function runMigration3(db: SQLiteDBConnection): Promise<void> {
       FOREIGN KEY (new_workout_plan_id) REFERENCES workout_plans(id)
     );
   `);
+}
+
+async function runMigration4(db: SQLiteDBConnection): Promise<void> {
+  await addColumnIfMissing(db, "settings", "calculator_draft_json", "TEXT NOT NULL DEFAULT '{}'");
+  await addColumnIfMissing(db, "user_profile", "physique_goal", "TEXT NOT NULL DEFAULT 'maintain'");
+  await addColumnIfMissing(db, "user_profile", "current_state", "TEXT NOT NULL DEFAULT 'both_unsure'");
+  await addColumnIfMissing(db, "nutrition_plans", "archived_at", "TEXT");
+  await addColumnIfMissing(db, "workout_plans", "archived_at", "TEXT");
+  await db.execute(`
+    UPDATE user_profile SET
+      physique_goal = CASE primary_goal
+        WHEN 'fat_loss' THEN 'leaner'
+        WHEN 'muscle_gain' THEN 'muscular'
+        WHEN 'recomposition' THEN 'fit_defined'
+        WHEN 'performance' THEN 'performance'
+        ELSE 'maintain'
+      END,
+      current_state = CASE primary_goal
+        WHEN 'fat_loss' THEN 'reduce_fat'
+        WHEN 'muscle_gain' THEN 'fairly_lean_gain_muscle'
+        ELSE 'both_unsure'
+      END
+    WHERE birth_date <> '';
+  `);
+
+  const { values: measurementCountRows } = await db.query("SELECT COUNT(*) AS count FROM body_measurements");
+  if (Number(measurementCountRows?.[0]?.count ?? 0) === 0) {
+    const { values: planRows } = await db.query(
+      "SELECT profile_snapshot_json FROM nutrition_plans ORDER BY created_at DESC, id DESC LIMIT 1"
+    );
+    try {
+      const snapshot = JSON.parse((planRows?.[0]?.profile_snapshot_json as string) || "{}");
+      if (Number(snapshot.weight_kg) > 0) {
+        await db.run(
+          "INSERT INTO body_measurements (recorded_at, weight_kg, notes) VALUES (date('now'), ?, ?)",
+          [Number(snapshot.weight_kg), "Recovered from the previous plan during the 0.1.1 upgrade"]
+        );
+      }
+    } catch {
+      // A malformed legacy snapshot should not block the additive migration.
+    }
+  }
 }

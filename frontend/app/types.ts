@@ -4,6 +4,8 @@ export type CalorieDistributionMode = "fixed" | "flexible_weekly";
 export type MetabolicSex = "female" | "male";
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "very_active";
 export type GoalKind = "maintain" | "fat_loss" | "muscle_gain" | "recomposition" | "performance";
+export type PhysiqueGoal = "leaner" | "fit_defined" | "muscular" | "maintain" | "performance";
+export type CurrentState = "reduce_fat" | "fairly_lean_gain_muscle" | "both_unsure";
 export type PlanSource = "initial" | "manual" | "recalibration" | "restored";
 export type RecalibrationConfidence = "low" | "medium" | "high";
 
@@ -61,6 +63,10 @@ export type DailySummary = {
   daily_goal: number;
   weekly_goal: number;
   adjusted_goal: number;
+  planned_goal: number;
+  carryover_adjustment: number;
+  target_source: "plan" | "manual";
+  plan_day_kind: "standard" | "workout" | "flex" | "workout_flex" | null;
   consumed: number;
   remaining: number;
   week_consumed: number;
@@ -139,6 +145,8 @@ export type UserProfile = {
   height_cm: number;
   activity_level: ActivityLevel;
   primary_goal: GoalKind;
+  physique_goal: PhysiqueGoal;
+  current_state: CurrentState;
   target_weight_kg: number | null;
   target_date: string | null;
   event_name: string;

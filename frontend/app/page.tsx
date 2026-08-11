@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Activity, ArrowRight, CalendarDays, CheckCircle2, Circle, Flame, Trophy } from "lucide-react";
+import { Activity, ArrowRight, CalendarDays, CheckCircle2, Circle, Flame, Settings, Trophy } from "lucide-react";
 import { getDailyMacroSummary, getDailySummary, getHistory, completeChallenge as dbCompleteChallenge } from "./db";
 import type { DailyMacroSummary, DailySummary, HistoryDay } from "./types";
 import { QuickMealLogger } from "./components/QuickMealLogger";
@@ -97,6 +97,23 @@ export default function Home() {
       <div className="progressTrack" aria-label={`${percent}% of target used`}>
         <span style={{ width: `${percent}%` }} />
       </div>
+
+      {summary && (
+        <div className="targetContext">
+          <div>
+            <strong>{summary.target_source === "plan" ? "Active plan target" : "Manual target"}</strong>
+            <span>
+              {summary.target_source === "plan" && summary.plan_day_kind
+                ? `${summary.plan_day_kind.replace("_", " + ")} day · ${summary.planned_goal} kcal planned`
+                : `${summary.planned_goal} kcal planned`}
+              {summary.carryover_adjustment !== 0
+                ? ` · ${summary.carryover_adjustment > 0 ? "+" : ""}${summary.carryover_adjustment} weekly adjustment`
+                : ""}
+            </span>
+          </div>
+          <Link className="textButton" href="/goals"><Settings size={16} />Edit target</Link>
+        </div>
+      )}
 
       <QuickMealLogger onLogged={loadDashboard} />
 

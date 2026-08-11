@@ -1,15 +1,19 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Activity, Check, Dumbbell, RefreshCw, Save } from "lucide-react";
+import { Activity, Check, Dumbbell, History, RefreshCw, RotateCcw, Save, Trash2 } from "lucide-react";
 import { getUserProfile } from "../db/plans";
 import {
+  discardWorkoutPlan,
   generateAndSaveWorkoutPlan,
   getActiveWorkoutPlan,
   getLatestWorkoutRecalibrationReport,
   getRecentWorkoutSessions,
+  getWorkoutPlans,
   recalibrateWorkoutPlan,
+  restoreWorkoutPlan,
   saveWorkoutSession,
+  unarchiveWorkoutPlan,
 } from "../db/workouts";
 import type {
   UserProfile,
@@ -28,18 +32,20 @@ type ExerciseForm = { pain: boolean; notes: string; sets: SetForm[] };
 export default function WorkoutPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
+  const [plans, setPlans] = useState<WorkoutPlan[]>([]);
   const [sessions, setSessions] = useState<WorkoutSessionSummary[]>([]);
   const [report, setReport] = useState<WorkoutRecalibrationReport | null>(null);
   const [loggingDay, setLoggingDay] = useState<WorkoutPlanDay | null>(null);
   const [isBusy, setIsBusy] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [lastDiscardedPlan, setLastDiscardedPlan] = useState<{ id: number; wasActive: boolean } | null>(null);
 
   async function load() {
-    const [savedProfile, activePlan, recentSessions, latestReport] = await Promise.all([
-      getUserProfile(), getActiveWorkoutPlan(), getRecentWorkoutSessions(), getLatestWorkoutRecalibrationReport(),
+    const [savedProfile, activePlan, savedPlans, recentSessions, latestReport] = await Promise.all([
+      getUserProfile(), getActiveWorkoutPlan(), getWorkoutPlans(3), getRecentWorkoutSessions(), getLatestWorkoutRecalibrationReport(),
     ]);
-    setProfile(savedProfile); setPlan(activePlan); setSessions(recentSessions); setReport(latestReport); setIsBusy(false);
+    setProfile(savedProfile); setPlan(activePlan); setPlans(savedPlans); setSessions(recentSessions); setReport(latestReport); setIsBusy(false);
   }
 
   useEffect(() => { load().catch((caught) => { setError(caught instanceof Error ? caught.message : "Could not load workouts."); setIsBusy(false); }); }, []);
@@ -47,7 +53,7 @@ export default function WorkoutPage() {
   async function generate() {
     if (!profile) { setError("Create your profile in Plan first."); return; }
     setIsBusy(true); setError("");
-    try { const created = await generateAndSaveWorkoutPlan(profile); setPlan(created); setMessage("Workout plan created."); }
+    try { await generateAndSaveWorkoutPlan(profile); setMessage("Workout plan created."); await load(); }
     catch (caught) { setError(caught instanceof Error ? caught.message : "Could not create workout plan."); }
     finally { setIsBusy(false); }
   }
@@ -58,10 +64,44 @@ export default function WorkoutPage() {
     catch (caught) { setError(caught instanceof Error ? caught.message : "Could not recalibrate workouts."); setIsBusy(false); }
   }
 
+  async function restore(planId: number) {
+    setIsBusy(true); setError("");
+    try { await restoreWorkoutPlan(planId); setMessage("Previous workout plan restored."); await load(); }
+    catch (caught) { setError(caught instanceof Error ? caught.message : "Could not restore workout plan."); setIsBusy(false); }
+  }
+
+  async function discard(planId: number) {
+    if (!window.confirm("Discard this workout plan? The previous plan will become active if one exists.")) return;
+    setIsBusy(true); setError("");
+    try {
+      const wasActive = plan?.id === planId;
+      await discardWorkoutPlan(planId);
+      setLastDiscardedPlan({ id: planId, wasActive });
+      setMessage("Workout plan discarded.");
+      await load();
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not discard workout plan."); setIsBusy(false); }
+  }
+
+  async function undoDiscard() {
+    if (lastDiscardedPlan === null) return;
+    setIsBusy(true); setError("");
+    try {
+      if (lastDiscardedPlan.wasActive) await restoreWorkoutPlan(lastDiscardedPlan.id);
+      else await unarchiveWorkoutPlan(lastDiscardedPlan.id);
+      await load();
+      setLastDiscardedPlan(null);
+      setMessage(lastDiscardedPlan.wasActive ? "Discard undone. The workout plan is active again." : "Discard undone.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not undo discard.");
+      setIsBusy(false);
+    }
+  }
+
   return (
     <section className="pageStack">
       <div className="pageHeader"><div><p className="eyebrow">Offline training</p><h1>Workout</h1></div><div className="pageHeaderRight"><button disabled={isBusy || !profile} onClick={generate} type="button"><Dumbbell size={17} />{plan ? "Rebuild plan" : "Create plan"}</button></div></div>
       {message && <p className="success">{message}</p>}{error && <p className="error">{error}</p>}
+      {lastDiscardedPlan !== null && <button className="secondaryButton inlineFit" onClick={undoDiscard} type="button"><RotateCcw size={16} />Undo discard</button>}
       {!profile && <section className="panel"><p>Create a nutrition and training profile in the Plan section before generating workouts.</p></section>}
 
       {plan && <section className="panel">
@@ -76,6 +116,7 @@ export default function WorkoutPage() {
 
       {loggingDay && <WorkoutLogger day={loggingDay} onCancel={() => setLoggingDay(null)} onSaved={async () => { setLoggingDay(null); setMessage("Workout saved."); await load(); }} />}
       {report && <WorkoutReport report={report} />}
+      {plans.length > 0 && <section className="panel"><div className="panelHeader"><h2>Last three workout plans</h2><History size={18} /></div><ul className="planHistory">{plans.map((savedPlan) => <li key={savedPlan.id}><div><strong>{savedPlan.name}</strong><small>{new Date(savedPlan.created_at).toLocaleString()} · {savedPlan.source.replace("_", " ")}</small></div><div className="historyActions">{savedPlan.is_active ? <span className="activePill">Active</span> : <button className="secondaryButton" onClick={() => restore(savedPlan.id)} type="button"><RotateCcw size={15} />Restore</button>}<button aria-label="Discard workout plan" className="iconButton danger" onClick={() => discard(savedPlan.id)} type="button"><Trash2 size={15} /></button></div></li>)}</ul></section>}
       {sessions.length > 0 && <section className="panel"><div className="panelHeader"><h2>Recent workouts</h2><Check size={18} /></div><ul className="sessionList">{sessions.map((session) => <li key={session.id}><div><strong>{session.title}</strong><small>{session.scheduled_for} · {session.completed_sets} sets</small></div><div className="sessionSignals">{session.energy_rating && <span>Energy {session.energy_rating}/5</span>}{session.recovery_rating && <span>Recovery {session.recovery_rating}/5</span>}{session.pain_reported && <span className="painSignal">Pain noted</span>}</div></li>)}</ul></section>}
     </section>
   );

@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { CalendarDays, Save, Settings } from "lucide-react";
-import { getDailySummary, updateSettings } from "../db";
+import { getDailySummary, getSettings, updateSettings } from "../db";
 import type { CalorieDistributionMode, DailySummary, GoalMode } from "../types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -23,15 +23,15 @@ export default function GoalsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    getDailySummary()
-      .then((s) => {
+    Promise.all([getDailySummary(), getSettings()])
+      .then(([s, settings]) => {
         setSummary(s);
-        setGoalMode(s.goal_mode);
-        setDailyGoal(String(s.daily_goal));
-        setWeeklyGoal(String(s.weekly_goal));
-        setDistributionMode(s.calorie_distribution_mode ?? "fixed");
-        setWeekStartDay(s.week_start_day);
-        setPartnerName(s.partner_name ?? "");
+        setGoalMode(settings.goal_mode);
+        setDailyGoal(String(settings.daily_calorie_goal));
+        setWeeklyGoal(String(settings.weekly_calorie_goal));
+        setDistributionMode(settings.calorie_distribution_mode ?? "fixed");
+        setWeekStartDay(settings.week_start_day);
+        setPartnerName(settings.partner_name ?? "");
       })
       .catch(() => setError("Could not load goals."));
   }, []);
@@ -40,15 +40,16 @@ export default function GoalsPage() {
     event.preventDefault();
     setError(""); setMessage("");
     try {
-      const s = await updateSettings({
+      await updateSettings({
         goal_mode: goalMode,
         daily_calorie_goal: goalMode === "daily" ? Number(dailyGoal) : undefined,
         weekly_calorie_goal: goalMode === "weekly" ? Number(weeklyGoal) : undefined,
         calorie_distribution_mode: distributionMode,
       });
+      const [s, settings] = await Promise.all([getDailySummary(), getSettings()]);
       setSummary(s);
-      setDailyGoal(String(s.daily_goal));
-      setWeeklyGoal(String(s.weekly_goal));
+      setDailyGoal(String(settings.daily_calorie_goal));
+      setWeeklyGoal(String(settings.weekly_calorie_goal));
       setMessage("Saved goal");
     } catch (e) { setError(e instanceof Error ? e.message : "Could not save goal."); }
   }
@@ -83,13 +84,24 @@ export default function GoalsPage() {
 
       <form className="panel settingsForm" onSubmit={submitPartnerName}>
         <div className="panelHeader">
-          <h2>Her name</h2>
+          <h2>Dashboard name</h2>
           <Save size={18} />
         </div>
         <label className="stackedField">
-          <span>Partner&apos;s name (shown on dashboard)</span>
+          <span>Name shown on the dashboard (optional)</span>
           <input placeholder="e.g. Priya" type="text" value={partnerName} onChange={(e) => setPartnerName(e.target.value)} />
         </label>
+        <button type="submit"><Save size={18} />Save name</button>
+        {nameMessage && <p className="success">{nameMessage}</p>}
+        {nameError && <p className="error">{nameError}</p>}
+      </form>
+
+      <form className="panel settingsForm" onSubmit={submitSettings}>
+        <div className="panelHeader">
+          <h2>Calorie target</h2>
+          <Settings size={18} />
+        </div>
+        {summary?.target_source === "plan" && <p className="planManagedNotice">Your active plan controls Today. These manual values stay saved as the fallback if all plans are discarded.</p>}
         <div>
           <span className="fieldLabel">Target behavior</span>
           <div className="toggleGroup">
@@ -117,16 +129,6 @@ export default function GoalsPage() {
               ? "Every day keeps its planned target."
               : "Earlier over- or under-target days are spread across the remaining days."}
           </p>
-        </div>
-        <button type="submit"><Save size={18} />Save</button>
-        {nameMessage && <p className="success">{nameMessage}</p>}
-        {nameError && <p className="error">{nameError}</p>}
-      </form>
-
-      <form className="panel settingsForm" onSubmit={submitSettings}>
-        <div className="panelHeader">
-          <h2>Calorie goal</h2>
-          <Settings size={18} />
         </div>
         <div className="toggleGroup">
           <label>

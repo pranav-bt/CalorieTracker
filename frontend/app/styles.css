@@ -795,6 +795,70 @@ button:disabled {
   padding: 5px 9px;
 }
 
+.historyActions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.phaseRecommendation,
+.targetContext,
+.planManagedNotice {
+  background: #f0f7f3;
+  border: 1px solid #cfe1d8;
+  border-radius: 8px;
+}
+
+.phaseRecommendation {
+  padding: 16px;
+}
+
+.phaseRecommendation h3 {
+  margin: 5px 0 8px;
+}
+
+.phaseRecommendation p {
+  color: var(--muted);
+  margin: 6px 0;
+}
+
+.phaseRecommendation details {
+  margin-top: 12px;
+}
+
+.phaseRecommendation .stackedField {
+  margin-top: 10px;
+}
+
+.targetContext {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.targetContext strong,
+.targetContext span {
+  display: block;
+}
+
+.targetContext span {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+.planManagedNotice {
+  color: var(--accent-dark);
+  margin: 0;
+  padding: 12px;
+}
+
+.inlineFit {
+  width: fit-content;
+}
+
 .secondaryButton {
   background: white;
   border: 1px solid var(--line);

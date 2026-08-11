@@ -30,6 +30,7 @@ import type {
   Settings,
   Unit,
 } from "../types";
+import { calculateTodayTarget } from "../domain/dailyTarget";
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -95,8 +96,8 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
   const s = sv![0] as Record<string, unknown>;
 
   const weekStartDay = s.week_start_day as number;
-  const dailyGoal = s.daily_calorie_goal as number;
-  const weeklyGoal = s.weekly_calorie_goal as number;
+  const manualDailyGoal = s.daily_calorie_goal as number;
+  const manualWeeklyGoal = s.weekly_calorie_goal as number;
   const goalMode = s.goal_mode as string;
   const distributionMode = (s.calorie_distribution_mode as string) ?? "fixed";
 
@@ -113,11 +114,34 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
 
   const q = (sql: string, p: unknown[] = []) => db.query(sql, p);
 
-  const [todayR, beforeR, loggedBeforeR, weekR, daysLoggedR, allDatesR, earnedR, spentR] =
+  const { values: planRows } = await q(
+    `SELECT p.id, p.activated_at, p.daily_calories, p.weekly_calories,
+            d.weekday, d.day_kind, d.calories
+     FROM nutrition_plans p
+     JOIN nutrition_plan_days d ON d.plan_id=p.id
+     WHERE p.is_active=1 AND p.archived_at IS NULL
+     ORDER BY d.weekday`
+  );
+  const activePlanRows = planRows ?? [];
+  const targetSource = activePlanRows.length ? "plan" as const : "manual" as const;
+  const planTargets = new Map(activePlanRows.map((row) => [row.weekday as number, row.calories as number]));
+  const todayPlanRow = activePlanRows.find((row) => row.weekday === pyWeekday);
+  const dailyGoal = activePlanRows.length
+    ? activePlanRows[0].daily_calories as number
+    : manualDailyGoal;
+  const weeklyGoal = activePlanRows.length
+    ? activePlanRows[0].weekly_calories as number
+    : manualWeeklyGoal;
+  const plannedGoal = todayPlanRow?.calories as number | undefined ?? manualDailyGoal;
+  const activatedDate = activePlanRows[0]?.activated_at
+    ? String(activePlanRows[0].activated_at).slice(0, 10)
+    : weekStart;
+  const carryoverStart = activatedDate > weekStart ? activatedDate : weekStart;
+
+  const [todayR, priorDaysR, weekR, daysLoggedR, allDatesR, earnedR, spentR] =
     await Promise.all([
       q("SELECT COALESCE(SUM(total_calories),0) as v FROM meals WHERE date=?", [today]),
-      q("SELECT COALESCE(SUM(total_calories),0) as v FROM meals WHERE date>=? AND date<?", [weekStart, today]),
-      q("SELECT COUNT(DISTINCT date) as v FROM meals WHERE date>=? AND date<?", [weekStart, today]),
+      q("SELECT date, SUM(total_calories) AS calories FROM meals WHERE date>=? AND date<? GROUP BY date", [carryoverStart, today]),
       q("SELECT COALESCE(SUM(total_calories),0) as v FROM meals WHERE date>=? AND date<=?", [weekStart, weekEnd]),
       q("SELECT COUNT(DISTINCT date) as v FROM meals WHERE date>=? AND date<=?", [weekStart, weekEnd]),
       q("SELECT DISTINCT date FROM meals"),
@@ -126,8 +150,14 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
     ]);
 
   const todayConsumed = todayR.values![0].v as number;
-  const consumedBefore = beforeR.values![0].v as number;
-  const loggedDaysBefore = loggedBeforeR.values![0].v as number;
+  const priorDays = priorDaysR.values ?? [];
+  const consumedBefore = priorDays.reduce((sum, row) => sum + Number(row.calories), 0);
+  const plannedBefore = priorDays.reduce((sum, row) => {
+    if (targetSource === "manual") return sum + manualDailyGoal;
+    const date = new Date(`${row.date as string}T00:00:00`);
+    const weekday = (date.getDay() + 6) % 7;
+    return sum + (planTargets.get(weekday) ?? dailyGoal);
+  }, 0);
   const weekConsumed = weekR.values![0].v as number;
   const daysLoggedThisWeek = daysLoggedR.values![0].v as number;
   const loggedDates = new Set((allDatesR.values ?? []).map((r) => r.date as string));
@@ -149,10 +179,13 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
   const greeting = partnerName ? `Hey ${partnerName}! ${greetingBase}` : greetingBase;
 
   const daysLeft = Math.floor((wEnd.getTime() - cur.getTime()) / 86_400_000) + 1;
-  const delta = consumedBefore - dailyGoal * loggedDaysBefore;
-  const adjustedGoal = distributionMode === "flexible_weekly"
-    ? Math.max(0, Math.round(dailyGoal - delta / daysLeft))
-    : dailyGoal;
+  const { adjusted_goal: adjustedGoal, carryover_adjustment: carryoverAdjustment } = calculateTodayTarget({
+    planned_today: plannedGoal,
+    consumed_before: consumedBefore,
+    planned_before: plannedBefore,
+    days_left_including_today: daysLeft,
+    mode: distributionMode as Settings["calorie_distribution_mode"],
+  });
 
   let endOfDayNote: string | null = null;
   if (todayConsumed > 0) {
@@ -180,6 +213,12 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
     daily_goal: dailyGoal,
     weekly_goal: weeklyGoal,
     adjusted_goal: adjustedGoal,
+    planned_goal: plannedGoal,
+    carryover_adjustment: carryoverAdjustment,
+    target_source: targetSource,
+    plan_day_kind: targetSource === "plan"
+      ? todayPlanRow?.day_kind as DailySummary["plan_day_kind"] ?? "standard"
+      : null,
     consumed: todayConsumed,
     remaining: adjustedGoal - todayConsumed,
     week_consumed: weekConsumed,
@@ -221,7 +260,15 @@ export async function getDailySummary(): Promise<DailySummary> {
   if (native()) return nativeDailySummary();
   const r = await fetch(`${API}/daily-summary`);
   if (!r.ok) throw new Error("Could not load summary.");
-  return r.json();
+  const summary = await r.json() as Partial<DailySummary>;
+  const plannedGoal = summary.planned_goal ?? summary.adjusted_goal ?? summary.daily_goal ?? 0;
+  return {
+    ...summary,
+    planned_goal: plannedGoal,
+    carryover_adjustment: summary.carryover_adjustment ?? ((summary.adjusted_goal ?? plannedGoal) - plannedGoal),
+    target_source: summary.target_source ?? "manual",
+    plan_day_kind: summary.plan_day_kind ?? null,
+  } as DailySummary;
 }
 
 export async function getDailyMacroSummary(): Promise<DailyMacroSummary> {

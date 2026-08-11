@@ -12,7 +12,7 @@ import type {
   WorkoutSessionDraft,
   WorkoutSessionSummary,
 } from "../types";
-import { getDb } from "./client";
+import { getDb, inTransaction } from "./client";
 
 function requireAndroid(): void {
   if (!Capacitor.isNativePlatform()) throw new Error("Workout storage is available in the Android app.");
@@ -29,14 +29,14 @@ async function savePlan(
   profileSnapshot: UserProfile | Record<string, unknown>
 ): Promise<WorkoutPlan> {
   const db = await getDb();
-  await db.execute("BEGIN TRANSACTION");
-  try {
-    await db.run("UPDATE workout_plans SET is_active=0 WHERE is_active=1");
+  return inTransaction(db, async () => {
+    await db.run("UPDATE workout_plans SET is_active=0 WHERE is_active=1", [], false);
     const { changes } = await db.run(
       `INSERT INTO workout_plans (
          activated_at, is_active, source, name, goal, profile_snapshot_json, explanation
        ) VALUES (datetime('now'), 1, ?, ?, ?, ?, ?)`,
-      [plan.source, plan.name, plan.goal, JSON.stringify(profileSnapshot), plan.explanation]
+      [plan.source, plan.name, plan.goal, JSON.stringify(profileSnapshot), plan.explanation],
+      false
     );
     const planId = changes?.lastId as number;
     const storedDays: WorkoutPlanDay[] = [];
@@ -44,7 +44,8 @@ async function savePlan(
       const { changes: dayChanges } = await db.run(
         `INSERT INTO workout_plan_days (plan_id, weekday, title, focus, estimated_minutes)
          VALUES (?, ?, ?, ?, ?)`,
-        [planId, day.weekday, day.title, day.focus, day.estimated_minutes]
+        [planId, day.weekday, day.title, day.focus, day.estimated_minutes],
+        false
       );
       const dayId = dayChanges?.lastId as number;
       const storedExercises: WorkoutPrescription[] = [];
@@ -60,13 +61,13 @@ async function savePlan(
             exercise.target_sets, exercise.target_reps_min, exercise.target_reps_max,
             exercise.target_load_kg, exercise.target_rir, exercise.target_rpe,
             exercise.target_duration_s, exercise.target_distance_m, exercise.notes,
-          ]
+          ],
+          false
         );
         storedExercises.push({ ...exercise, id: exerciseChanges?.lastId as number });
       }
       storedDays.push({ ...day, id: dayId, exercises: storedExercises });
     }
-    await db.execute("COMMIT");
     return {
       id: planId,
       created_at: new Date().toISOString(),
@@ -78,18 +79,22 @@ async function savePlan(
       explanation: plan.explanation,
       days: storedDays,
     };
-  } catch (error) {
-    await db.execute("ROLLBACK");
-    throw error;
-  }
+  });
 }
 
 export async function getActiveWorkoutPlan(): Promise<WorkoutPlan | null> {
   requireAndroid();
   const db = await getDb();
-  const { values } = await db.query("SELECT * FROM workout_plans WHERE is_active=1 ORDER BY id DESC LIMIT 1");
+  const { values } = await db.query("SELECT * FROM workout_plans WHERE is_active=1 AND archived_at IS NULL ORDER BY id DESC LIMIT 1");
   const row = values?.[0];
   if (!row) return null;
+  return loadWorkoutPlan(db, row);
+}
+
+async function loadWorkoutPlan(
+  db: Awaited<ReturnType<typeof getDb>>,
+  row: Record<string, unknown>
+): Promise<WorkoutPlan> {
   const { values: dayRows } = await db.query("SELECT * FROM workout_plan_days WHERE plan_id=? ORDER BY weekday", [row.id]);
   const days: WorkoutPlanDay[] = [];
   for (const day of dayRows ?? []) {
@@ -113,7 +118,7 @@ export async function getActiveWorkoutPlan(): Promise<WorkoutPlan | null> {
     id: row.id as number,
     created_at: row.created_at as string,
     activated_at: row.activated_at as string | null,
-    is_active: true,
+    is_active: Boolean(row.is_active),
     source: row.source as WorkoutPlan["source"],
     name: row.name as string,
     goal: row.goal as string,
@@ -122,11 +127,68 @@ export async function getActiveWorkoutPlan(): Promise<WorkoutPlan | null> {
   };
 }
 
+export async function getWorkoutPlans(limit = 3): Promise<WorkoutPlan[]> {
+  requireAndroid();
+  const db = await getDb();
+  const { values } = await db.query(
+    "SELECT * FROM workout_plans WHERE archived_at IS NULL ORDER BY created_at DESC, id DESC LIMIT ?",
+    [limit]
+  );
+  return Promise.all((values ?? []).map((row) => loadWorkoutPlan(db, row)));
+}
+
+export async function restoreWorkoutPlan(planId: number): Promise<void> {
+  requireAndroid();
+  const db = await getDb();
+  const { values } = await db.query("SELECT id FROM workout_plans WHERE id=?", [planId]);
+  if (!values?.[0]) throw new Error("Workout plan not found.");
+  await inTransaction(db, async () => {
+    await db.run("UPDATE workout_plans SET is_active=0 WHERE is_active=1", [], false);
+    await db.run(
+      "UPDATE workout_plans SET archived_at=NULL, is_active=1, activated_at=datetime('now') WHERE id=?",
+      [planId],
+      false
+    );
+  });
+}
+
+export async function discardWorkoutPlan(planId: number): Promise<void> {
+  requireAndroid();
+  const db = await getDb();
+  const { values } = await db.query("SELECT is_active FROM workout_plans WHERE id=? AND archived_at IS NULL", [planId]);
+  const wasActive = Boolean(values?.[0]?.is_active);
+  if (!values?.[0]) throw new Error("Workout plan not found.");
+  await inTransaction(db, async () => {
+    await db.run(
+      "UPDATE workout_plans SET is_active=0, archived_at=datetime('now') WHERE id=?",
+      [planId],
+      false
+    );
+    if (wasActive) {
+      const { values: previousRows } = await db.query(
+        "SELECT id FROM workout_plans WHERE archived_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 1"
+      );
+      if (previousRows?.[0]) {
+        await db.run(
+          "UPDATE workout_plans SET is_active=1, activated_at=datetime('now') WHERE id=?",
+          [previousRows[0].id],
+          false
+        );
+      }
+    }
+  });
+}
+
+export async function unarchiveWorkoutPlan(planId: number): Promise<void> {
+  requireAndroid();
+  const db = await getDb();
+  await db.run("UPDATE workout_plans SET archived_at=NULL WHERE id=?", [planId]);
+}
+
 export async function saveWorkoutSession(session: WorkoutSessionDraft): Promise<number> {
   requireAndroid();
   const db = await getDb();
-  await db.execute("BEGIN TRANSACTION");
-  try {
+  return inTransaction(db, async () => {
     const now = new Date().toISOString();
     const { changes } = await db.run(
       `INSERT INTO workout_sessions (
@@ -136,7 +198,8 @@ export async function saveWorkoutSession(session: WorkoutSessionDraft): Promise<
       [
         session.plan_day_id, session.scheduled_for, now, now,
         session.energy_rating, session.recovery_rating, session.pain_reported ? 1 : 0, session.notes,
-      ]
+      ],
+      false
     );
     const sessionId = changes?.lastId as number;
     for (const exercise of session.exercises) {
@@ -147,7 +210,8 @@ export async function saveWorkoutSession(session: WorkoutSessionDraft): Promise<
         [
           sessionId, exercise.plan_exercise_id, exercise.exercise_name,
           exercise.order_index, exercise.notes, exercise.pain_reported ? 1 : 0,
-        ]
+        ],
+        false
       );
       const exerciseLogId = logChanges?.lastId as number;
       for (const set of exercise.sets) {
@@ -159,16 +223,13 @@ export async function saveWorkoutSession(session: WorkoutSessionDraft): Promise<
           [
             exerciseLogId, set.set_number, set.reps, set.load_kg, set.rir, set.rpe,
             set.duration_seconds, set.distance_meters, set.completed ? 1 : 0,
-          ]
+          ],
+          false
         );
       }
     }
-    await db.execute("COMMIT");
     return sessionId;
-  } catch (error) {
-    await db.execute("ROLLBACK");
-    throw error;
-  }
+  });
 }
 
 export async function getRecentWorkoutSessions(limit = 12): Promise<WorkoutSessionSummary[]> {

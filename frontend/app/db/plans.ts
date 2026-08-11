@@ -16,7 +16,7 @@ import type {
   RecalibrationReport,
   UserProfile,
 } from "../types";
-import { getDb } from "./client";
+import { getDb, inTransaction } from "./client";
 
 export type StoredNutritionPlan = NutritionPlan & { days: NutritionPlanDay[] };
 
@@ -61,6 +61,8 @@ export async function getUserProfile(): Promise<UserProfile | null> {
     height_cm: row.height_cm as number,
     activity_level: row.activity_level as UserProfile["activity_level"],
     primary_goal: row.primary_goal as UserProfile["primary_goal"],
+    physique_goal: row.physique_goal as UserProfile["physique_goal"],
+    current_state: row.current_state as UserProfile["current_state"],
     target_weight_kg: row.target_weight_kg as number | null,
     target_date: row.target_date as string | null,
     event_name: row.event_name as string,
@@ -79,9 +81,18 @@ export async function getUserProfile(): Promise<UserProfile | null> {
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
   requireAndroid();
   const db = await getDb();
+  await writeUserProfile(db, profile, true);
+}
+
+async function writeUserProfile(
+  db: Awaited<ReturnType<typeof getDb>>,
+  profile: UserProfile,
+  transaction: boolean
+): Promise<void> {
   await db.run(
     `UPDATE user_profile SET
        birth_date=?, metabolic_sex=?, height_cm=?, activity_level=?, primary_goal=?,
+       physique_goal=?, current_state=?,
        target_weight_kg=?, target_date=?, event_name=?, event_date=?, workout_days_per_week=?,
        preferred_workout_days_json=?, workout_session_minutes=?, flex_days_per_week=?,
        flex_day_weekday=?, dietary_preferences_json=?, available_equipment_json=?,
@@ -93,6 +104,8 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
       profile.height_cm,
       profile.activity_level,
       profile.primary_goal,
+      profile.physique_goal,
+      profile.current_state,
       profile.target_weight_kg,
       profile.target_date,
       profile.event_name,
@@ -105,8 +118,27 @@ export async function saveUserProfile(profile: UserProfile): Promise<void> {
       JSON.stringify(profile.dietary_preferences),
       JSON.stringify(profile.available_equipment),
       JSON.stringify(profile.injuries_or_limitations),
-    ]
+    ],
+    transaction
   );
+}
+
+export async function getCalculatorDraft<T extends Record<string, unknown>>(): Promise<Partial<T> | null> {
+  requireAndroid();
+  const db = await getDb();
+  const { values } = await db.query("SELECT calculator_draft_json FROM settings WHERE id=1");
+  try {
+    const parsed = JSON.parse((values?.[0]?.calculator_draft_json as string) || "{}");
+    return parsed && typeof parsed === "object" ? parsed as Partial<T> : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveCalculatorDraft(draft: Record<string, unknown>): Promise<void> {
+  requireAndroid();
+  const db = await getDb();
+  await db.run("UPDATE settings SET calculator_draft_json=? WHERE id=1", [JSON.stringify(draft)]);
 }
 
 export async function getBodyMeasurements(limit = 30): Promise<BodyMeasurement[]> {
@@ -215,10 +247,9 @@ export async function calculateAndSaveNutritionPlan(
     }
   }
 
-  await db.execute("BEGIN TRANSACTION");
-  try {
-    await saveUserProfile(profile);
-    await db.run("UPDATE nutrition_plans SET is_active=0 WHERE is_active=1");
+  return inTransaction(db, async () => {
+    await writeUserProfile(db, profile, false);
+    await db.run("UPDATE nutrition_plans SET is_active=0 WHERE is_active=1", [], false);
     const { changes } = await db.run(
       `INSERT INTO nutrition_plans (
          activated_at, is_active, source, calculation_method, profile_snapshot_json,
@@ -235,7 +266,8 @@ export async function calculateAndSaveNutritionPlan(
         result.fat_g,
         result.fiber_g,
         result.explanation,
-      ]
+      ],
+      false
     );
     const planId = changes?.lastId as number;
     for (const day of result.days) {
@@ -246,23 +278,16 @@ export async function calculateAndSaveNutritionPlan(
         [
           planId, day.weekday, day.day_kind, day.calories,
           day.protein_g, day.carbs_g, day.fat_g, day.fiber_g,
-        ]
+        ],
+        false
       );
     }
-    await db.run(
-      "UPDATE settings SET daily_calorie_goal=?, weekly_calorie_goal=? WHERE id=1",
-      [result.calories, result.weekly_calories]
-    );
 
     if (previous && source === "recalibration") {
-      await saveRecalibrationReport(db, previous, planId, result, trendDecision);
+      await saveRecalibrationReport(db, previous, planId, result, trendDecision, false);
     }
-    await db.execute("COMMIT");
     return resultToStoredPlan(planId, source, result);
-  } catch (error) {
-    await db.execute("ROLLBACK");
-    throw error;
-  }
+  });
 }
 
 async function saveRecalibrationReport(
@@ -270,7 +295,8 @@ async function saveRecalibrationReport(
   previous: Record<string, unknown>,
   newPlanId: number,
   result: MacroCalculationResult,
-  trendDecision: NutritionTrendDecision | null
+  trendDecision: NutritionTrendDecision | null,
+  transaction = true
 ): Promise<void> {
   const comparisons: Array<[string, number, number]> = [
     ["Daily calories", previous.daily_calories as number, result.calories],
@@ -301,7 +327,8 @@ async function saveRecalibrationReport(
     `INSERT INTO recalibration_reports (
        previous_plan_id, new_plan_id, confidence, summary, evidence_json, changes_json
      ) VALUES (?, ?, ?, ?, ?, ?)`,
-    [previous.id, newPlanId, trendDecision?.confidence ?? "low", summary, JSON.stringify(evidence), JSON.stringify(changes)]
+    [previous.id, newPlanId, trendDecision?.confidence ?? "low", summary, JSON.stringify(evidence), JSON.stringify(changes)],
+    transaction
   );
 }
 
@@ -309,7 +336,7 @@ export async function getNutritionPlans(limit = 3): Promise<StoredNutritionPlan[
   requireAndroid();
   const db = await getDb();
   const { values } = await db.query(
-    "SELECT * FROM nutrition_plans ORDER BY created_at DESC, id DESC LIMIT ?",
+    "SELECT * FROM nutrition_plans WHERE archived_at IS NULL ORDER BY created_at DESC, id DESC LIMIT ?",
     [limit]
   );
   const plans: StoredNutritionPlan[] = [];
@@ -330,19 +357,47 @@ export async function restoreNutritionPlan(planId: number): Promise<void> {
   const { values } = await db.query("SELECT * FROM nutrition_plans WHERE id=?", [planId]);
   const plan = values?.[0];
   if (!plan) throw new Error("Plan not found.");
-  await db.execute("BEGIN TRANSACTION");
-  try {
-    await db.run("UPDATE nutrition_plans SET is_active=0 WHERE is_active=1");
-    await db.run("UPDATE nutrition_plans SET is_active=1, activated_at=datetime('now') WHERE id=?", [planId]);
+  await inTransaction(db, async () => {
+    await db.run("UPDATE nutrition_plans SET is_active=0 WHERE is_active=1", [], false);
     await db.run(
-      "UPDATE settings SET daily_calorie_goal=?, weekly_calorie_goal=? WHERE id=1",
-      [plan.daily_calories, plan.weekly_calories]
+      "UPDATE nutrition_plans SET archived_at=NULL, is_active=1, activated_at=datetime('now') WHERE id=?",
+      [planId],
+      false
     );
-    await db.execute("COMMIT");
-  } catch (error) {
-    await db.execute("ROLLBACK");
-    throw error;
-  }
+  });
+}
+
+export async function discardNutritionPlan(planId: number): Promise<void> {
+  requireAndroid();
+  const db = await getDb();
+  const { values } = await db.query("SELECT is_active FROM nutrition_plans WHERE id=? AND archived_at IS NULL", [planId]);
+  const wasActive = Boolean(values?.[0]?.is_active);
+  if (!values?.[0]) throw new Error("Plan not found.");
+  await inTransaction(db, async () => {
+    await db.run(
+      "UPDATE nutrition_plans SET is_active=0, archived_at=datetime('now') WHERE id=?",
+      [planId],
+      false
+    );
+    if (wasActive) {
+      const { values: previousRows } = await db.query(
+        "SELECT id FROM nutrition_plans WHERE archived_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 1"
+      );
+      if (previousRows?.[0]) {
+        await db.run(
+          "UPDATE nutrition_plans SET is_active=1, activated_at=datetime('now') WHERE id=?",
+          [previousRows[0].id],
+          false
+        );
+      }
+    }
+  });
+}
+
+export async function unarchiveNutritionPlan(planId: number): Promise<void> {
+  requireAndroid();
+  const db = await getDb();
+  await db.run("UPDATE nutrition_plans SET archived_at=NULL WHERE id=?", [planId]);
 }
 
 export async function getLatestRecalibrationReport(): Promise<RecalibrationReport | null> {

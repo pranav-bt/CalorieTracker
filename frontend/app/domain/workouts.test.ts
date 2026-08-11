@@ -3,7 +3,7 @@ import type { UserProfile } from "../types";
 
 const profile: UserProfile = {
   birth_date: "1990-01-01", metabolic_sex: "female", height_cm: 165,
-  activity_level: "moderate", primary_goal: "muscle_gain", target_weight_kg: null,
+  activity_level: "moderate", primary_goal: "muscle_gain", physique_goal: "muscular", current_state: "fairly_lean_gain_muscle", target_weight_kg: null,
   target_date: null, event_name: "", event_date: null, workout_days_per_week: 3,
   preferred_workout_days: [0, 2, 4], workout_session_minutes: 45, flex_days_per_week: 0,
   flex_day_weekday: null, dietary_preferences: [], available_equipment: ["dumbbells"],

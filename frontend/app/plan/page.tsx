@@ -1,24 +1,31 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { History, RefreshCw, RotateCcw, Save, Target } from "lucide-react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { History, RefreshCw, RotateCcw, Save, Target, Trash2 } from "lucide-react";
 import {
   addBodyMeasurement,
   calculateAndSaveNutritionPlan,
+  discardNutritionPlan,
   getBodyMeasurements,
+  getCalculatorDraft,
   getLatestRecalibrationReport,
   getNutritionPlans,
   getUserProfile,
   restoreNutritionPlan,
+  saveCalculatorDraft,
   type StoredNutritionPlan,
+  unarchiveNutritionPlan,
 } from "../db/plans";
 import type {
   ActivityLevel,
+  CurrentState,
   GoalKind,
   MetabolicSex,
+  PhysiqueGoal,
   RecalibrationReport,
   UserProfile,
 } from "../types";
+import { phaseImpact, phaseLabel, recommendPhase } from "../domain/goalGuidance";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -34,7 +41,9 @@ type FormState = {
   arm: string;
   thigh: string;
   activityLevel: ActivityLevel;
-  primaryGoal: GoalKind;
+  physiqueGoal: PhysiqueGoal;
+  currentState: CurrentState;
+  phaseOverride: "" | GoalKind;
   targetWeightKg: string;
   targetDate: string;
   eventName: string;
@@ -61,7 +70,9 @@ const INITIAL_FORM: FormState = {
   arm: "",
   thigh: "",
   activityLevel: "light",
-  primaryGoal: "maintain",
+  physiqueGoal: "fit_defined",
+  currentState: "both_unsure",
+  phaseOverride: "",
   targetWeightKg: "",
   targetDate: "",
   eventName: "",
@@ -84,6 +95,11 @@ export default function PlanPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [lastDiscardedPlan, setLastDiscardedPlan] = useState<{ id: number; wasActive: boolean } | null>(null);
+  const draftRef = useRef(form);
+  const draftReadyRef = useRef(false);
+  const recommendation = recommendPhase(form.physiqueGoal, form.currentState);
+  const selectedPhase = form.phaseOverride || recommendation.goal;
 
   useEffect(() => {
     load().catch((caught) => {
@@ -93,19 +109,49 @@ export default function PlanPage() {
   }, []);
 
   async function load() {
-    const [profile, measurements, savedPlans, latestReport] = await Promise.all([
+    const [profile, measurements, savedPlans, latestReport, draft] = await Promise.all([
       getUserProfile(),
       getBodyMeasurements(1),
       getNutritionPlans(3),
       getLatestRecalibrationReport(),
+      getCalculatorDraft<FormState>(),
     ]);
-    if (profile) setForm((current) => profileToForm(profile, measurements[0]?.weight_kg, current));
-    else if (measurements[0]) setForm((current) => ({ ...current, weightKg: String(measurements[0].weight_kg) }));
+    setForm((current) => {
+      const fromSaved = profile
+        ? profileToForm(profile, measurements[0], current)
+        : measurements[0]
+          ? measurementToForm(measurements[0], current)
+          : current;
+      if (!draft) return fromSaved;
+      return {
+        ...fromSaved,
+        ...draft,
+        preferredWorkoutDays: Array.isArray(draft.preferredWorkoutDays)
+          ? draft.preferredWorkoutDays
+          : fromSaved.preferredWorkoutDays,
+      };
+    });
     setPlans(savedPlans);
     setActivePlan(savedPlans.find((plan) => plan.is_active) ?? savedPlans[0] ?? null);
     setReport(latestReport);
+    draftReadyRef.current = true;
     setIsLoading(false);
   }
+
+  useEffect(() => {
+    if (isLoading) return;
+    draftRef.current = form;
+    const timer = window.setTimeout(() => {
+      saveCalculatorDraft(form as unknown as Record<string, unknown>).catch(() => undefined);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [form, isLoading]);
+
+  useEffect(() => () => {
+    if (draftReadyRef.current) {
+      saveCalculatorDraft(draftRef.current as unknown as Record<string, unknown>).catch(() => undefined);
+    }
+  }, []);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -160,9 +206,44 @@ export default function PlanPage() {
 
   async function restore(planId: number) {
     setError("");
-    await restoreNutritionPlan(planId);
-    setMessage("Previous plan restored.");
-    await load();
+    setIsLoading(true);
+    try {
+      await restoreNutritionPlan(planId);
+      setMessage("Previous plan restored.");
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not restore plan.");
+      setIsLoading(false);
+    }
+  }
+
+  async function discard(planId: number) {
+    if (!window.confirm("Discard this plan? If it is active, the previous plan will be restored automatically.")) return;
+    setError("");
+    try {
+      const wasActive = activePlan?.id === planId;
+      await discardNutritionPlan(planId);
+      setLastDiscardedPlan({ id: planId, wasActive });
+      setMessage("Plan discarded. The previous plan is active, or manual targets are being used if none remains.");
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not discard plan.");
+    }
+  }
+
+  async function undoDiscard() {
+    if (lastDiscardedPlan === null) return;
+    setIsLoading(true); setError("");
+    try {
+      if (lastDiscardedPlan.wasActive) await restoreNutritionPlan(lastDiscardedPlan.id);
+      else await unarchiveNutritionPlan(lastDiscardedPlan.id);
+      await load();
+      setLastDiscardedPlan(null);
+      setMessage(lastDiscardedPlan.wasActive ? "Discard undone. The plan is active again." : "Discard undone.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not undo discard.");
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -191,16 +272,48 @@ export default function PlanPage() {
               <option value="moderate">Moderately active</option><option value="very_active">Very active</option>
             </select>
           </Field>
-          <Field label="Primary goal">
-            <select value={form.primaryGoal} onChange={(e) => update("primaryGoal", e.target.value as GoalKind)}>
-              <option value="maintain">Maintain</option><option value="fat_loss">Fat loss</option>
-              <option value="muscle_gain">Muscle gain</option><option value="recomposition">Recomposition</option>
-              <option value="performance">Performance</option>
+          <Field label="How do you want to look or perform?">
+            <select value={form.physiqueGoal} onChange={(e) => { update("physiqueGoal", e.target.value as PhysiqueGoal); update("phaseOverride", ""); }}>
+              <option value="leaner">Leaner</option>
+              <option value="fit_defined">Fit and defined</option>
+              <option value="muscular">Bigger and stronger</option>
+              <option value="maintain">Maintain my current physique</option>
+              <option value="performance">Prepare for an event</option>
             </select>
           </Field>
+          {form.physiqueGoal !== "maintain" && form.physiqueGoal !== "performance" && (
+            <Field label="Which best describes you now?">
+              <select value={form.currentState} onChange={(e) => { update("currentState", e.target.value as CurrentState); update("phaseOverride", ""); }}>
+                <option value="reduce_fat">I mainly want to reduce body fat</option>
+                <option value="fairly_lean_gain_muscle">I am fairly lean and want more muscle</option>
+                <option value="both_unsure">I want both, or I am unsure</option>
+              </select>
+            </Field>
+          )}
           <Field label="Target weight (kg, optional)"><NumberInput required={false} value={form.targetWeightKg} onChange={(value) => update("targetWeightKg", value)} /></Field>
           <Field label="Target date (optional)"><input type="date" value={form.targetDate} onChange={(e) => update("targetDate", e.target.value)} /></Field>
         </div>
+
+        <section className="phaseRecommendation">
+          <span className="metricLabel">Recommended first phase</span>
+          <h3>{phaseLabel(selectedPhase)}</h3>
+          <p>{form.phaseOverride ? phaseImpact(form.phaseOverride) : recommendation.explanation}</p>
+          {!form.phaseOverride && recommendation.next_step && <p><strong>Later:</strong> {recommendation.next_step}</p>}
+          <details>
+            <summary>Choose a different first phase</summary>
+            <label className="stackedField">
+              <span>Phase override</span>
+              <select value={form.phaseOverride} onChange={(event) => update("phaseOverride", event.target.value as FormState["phaseOverride"])}>
+                <option value="">Use recommendation</option>
+                <option value="fat_loss">Fat-loss phase</option>
+                <option value="recomposition">Recomposition phase</option>
+                <option value="muscle_gain">Lean muscle-building phase</option>
+                <option value="maintain">Maintain</option>
+                <option value="performance">Performance</option>
+              </select>
+            </label>
+          </details>
+        </section>
 
         <details className="formDetails">
           <summary>Body measurements and event details</summary>
@@ -242,6 +355,7 @@ export default function PlanPage() {
 
         <button disabled={isLoading} type="submit">{plans.length ? <RefreshCw size={18} /> : <Save size={18} />}{plans.length ? "Recalibrate" : "Create plan"}</button>
         {message && <p className="success">{message}</p>}
+        {lastDiscardedPlan !== null && <button className="secondaryButton" onClick={undoDiscard} type="button"><RotateCcw size={16} />Undo discard</button>}
         {error && <p className="error">{error}</p>}
       </form>
 
@@ -255,7 +369,10 @@ export default function PlanPage() {
             {plans.map((plan) => (
               <li key={plan.id}>
                 <div><strong>{plan.calories} kcal/day</strong><small>{new Date(plan.created_at).toLocaleString()} · {plan.source.replace("_", " ")}</small></div>
-                {plan.is_active ? <span className="activePill">Active</span> : <button className="secondaryButton" onClick={() => restore(plan.id)} type="button"><RotateCcw size={15} />Restore</button>}
+                <div className="historyActions">
+                  {plan.is_active ? <span className="activePill">Active</span> : <button className="secondaryButton" onClick={() => restore(plan.id)} type="button"><RotateCcw size={15} />Restore</button>}
+                  <button className="iconButton danger" aria-label="Discard plan" onClick={() => discard(plan.id)} type="button"><Trash2 size={15} /></button>
+                </div>
               </li>
             ))}
           </ul>
@@ -315,12 +432,15 @@ function validate(form: FormState): string | null {
 }
 
 function formToProfile(form: FormState): UserProfile {
+  const recommended = recommendPhase(form.physiqueGoal, form.currentState);
   return {
     birth_date: form.birthDate,
     metabolic_sex: form.metabolicSex,
     height_cm: Number(form.heightCm),
     activity_level: form.activityLevel,
-    primary_goal: form.primaryGoal,
+    primary_goal: form.phaseOverride || recommended.goal,
+    physique_goal: form.physiqueGoal,
+    current_state: form.currentState,
     target_weight_kg: optionalNumber(form.targetWeightKg),
     target_date: form.targetDate || null,
     event_name: form.eventName.trim(),
@@ -336,15 +456,17 @@ function formToProfile(form: FormState): UserProfile {
   };
 }
 
-function profileToForm(profile: UserProfile, weight: number | undefined, current: FormState): FormState {
-  return {
+function profileToForm(profile: UserProfile, measurement: import("../types").BodyMeasurement | undefined, current: FormState): FormState {
+  const recommended = recommendPhase(profile.physique_goal, profile.current_state);
+  return measurementToForm(measurement, {
     ...current,
     birthDate: profile.birth_date,
     metabolicSex: profile.metabolic_sex,
     heightCm: String(profile.height_cm),
-    weightKg: weight ? String(weight) : current.weightKg,
     activityLevel: profile.activity_level,
-    primaryGoal: profile.primary_goal,
+    physiqueGoal: profile.physique_goal,
+    currentState: profile.current_state,
+    phaseOverride: profile.primary_goal === recommended.goal ? "" : profile.primary_goal,
     targetWeightKg: profile.target_weight_kg === null ? "" : String(profile.target_weight_kg),
     targetDate: profile.target_date ?? "",
     eventName: profile.event_name,
@@ -357,9 +479,24 @@ function profileToForm(profile: UserProfile, weight: number | undefined, current
     dietaryPreferences: profile.dietary_preferences.join(", "),
     equipment: profile.available_equipment.join(", "),
     limitations: profile.injuries_or_limitations.join(", "),
+  });
+}
+
+function measurementToForm(measurement: import("../types").BodyMeasurement | undefined, current: FormState): FormState {
+  if (!measurement) return current;
+  return {
+    ...current,
+    weightKg: String(measurement.weight_kg),
+    bodyFat: optionalString(measurement.body_fat_percent),
+    waist: optionalString(measurement.waist_cm),
+    chest: optionalString(measurement.chest_cm),
+    hips: optionalString(measurement.hips_cm),
+    arm: optionalString(measurement.arm_cm),
+    thigh: optionalString(measurement.thigh_cm),
   };
 }
 
 function optionalNumber(value: string): number | null { return value === "" ? null : Number(value); }
+function optionalString(value: number | null): string { return value === null ? "" : String(value); }
 function csv(value: string): string[] { return value.split(",").map((item) => item.trim()).filter(Boolean); }
 function localDate(): string { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }

@@ -1,7 +1,7 @@
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from "@capacitor-community/sqlite";
 
 export const DB_NAME = "fitness_companion";
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 const sqlite = new SQLiteConnection(CapacitorSQLite);
 let _db: SQLiteDBConnection | null = null;
@@ -22,4 +22,24 @@ export async function closeDb(): Promise<void> {
 
 export function getSqliteConnection(): SQLiteConnection {
   return sqlite;
+}
+
+export async function inTransaction<T>(
+  db: SQLiteDBConnection,
+  operation: () => Promise<T>
+): Promise<T> {
+  await db.beginTransaction();
+  try {
+    const result = await operation();
+    await db.commitTransaction();
+    return result;
+  } catch (error) {
+    try {
+      const active = await db.isTransactionActive();
+      if (active.result) await db.rollbackTransaction();
+    } catch {
+      // Preserve the original error; a failed rollback must not hide its cause.
+    }
+    throw error;
+  }
 }
