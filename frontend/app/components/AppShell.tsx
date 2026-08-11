@@ -10,6 +10,7 @@ import {
   Home,
   Settings,
   Target,
+  PackageOpen,
 } from "lucide-react";
 import { LoveNotePopup } from "./LoveNotePopup";
 import { getLoveNote } from "../db";
@@ -17,6 +18,7 @@ import { getLoveNote } from "../db";
 const navItems = [
   { href: "/", label: "Home", shortLabel: "Home", icon: Home },
   { href: "/foods", label: "Food Database", shortLabel: "Foods", icon: BookOpen },
+  { href: "/inventory", label: "Inventory", shortLabel: "Pantry", icon: PackageOpen },
   { href: "/plan", label: "Plan", shortLabel: "Plan", icon: Target },
   { href: "/history", label: "History", shortLabel: "History", icon: CalendarDays },
 ];

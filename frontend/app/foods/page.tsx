@@ -1,8 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { BookOpen, Pencil, Save, Search, Trash2, X } from "lucide-react";
+import { Camera as CameraIcon, Pencil, Save, Search, Trash2, X } from "lucide-react";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
 import { deleteFood, getFoods, updateFood, upsertFood } from "../db";
+import { parseNutritionLabel, type ParsedNutritionLabel } from "../domain/nutritionLabel";
+import { NutritionLabelScanner } from "../plugins/NutritionLabelScanner";
 import type { Food, Unit } from "../types";
 
 export default function FoodsPage() {
@@ -15,6 +19,9 @@ export default function FoodsPage() {
   const [carbs, setCarbs] = useState("0");
   const [fat, setFat] = useState("0");
   const [fiber, setFiber] = useState("0");
+  const [foodSource, setFoodSource] = useState<"manual" | "label_scan">("manual");
+  const [scanResult, setScanResult] = useState<ParsedNutritionLabel | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
@@ -38,6 +45,8 @@ export default function FoodsPage() {
     setCarbs(String(food.carbs_g));
     setFat(String(food.fat_g));
     setFiber(String(food.fiber_g));
+    setFoodSource(food.source ?? "manual");
+    setScanResult(null);
     setMessage("");
     setError("");
   }
@@ -52,6 +61,8 @@ export default function FoodsPage() {
     setCarbs("0");
     setFat("0");
     setFiber("0");
+    setFoodSource("manual");
+    setScanResult(null);
     setMessage("");
     setError("");
   }
@@ -79,7 +90,7 @@ export default function FoodsPage() {
         carbs_g: Number(carbs || 0),
         fat_g: Number(fat || 0),
         fiber_g: Number(fiber || 0),
-        source: "manual" as const,
+        source: foodSource,
       };
       const savedFood = editingId
         ? await updateFood(editingId, payload)
@@ -105,6 +116,45 @@ export default function FoodsPage() {
     }
   }
 
+  async function scanNutritionLabel() {
+    setError("");
+    setMessage("");
+    setScanResult(null);
+    if (!Capacitor.isNativePlatform()) {
+      setError("Nutrition-label scanning is available in the Android app.");
+      return;
+    }
+    setIsScanning(true);
+    try {
+      const photo = await Camera.getPhoto({
+        source: CameraSource.Camera,
+        resultType: CameraResultType.Uri,
+        quality: 92,
+        correctOrientation: true,
+        saveToGallery: false,
+        width: 1800,
+      });
+      if (!photo.path) throw new Error("The captured image could not be opened.");
+      const { text } = await NutritionLabelScanner.recognize({ path: photo.path });
+      const parsed = parseNutritionLabel(text);
+      setFoodQuantity(String(parsed.reference_quantity));
+      setFoodUnit(parsed.unit);
+      setFoodCalories(String(parsed.calories));
+      setProtein(String(parsed.protein_g));
+      setCarbs(String(parsed.carbs_g));
+      setFat(String(parsed.fat_g));
+      setFiber(String(parsed.fiber_g));
+      setFoodSource("label_scan");
+      setScanResult(parsed);
+      setMessage("Label read. Confirm every value and enter the food name before saving.");
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Could not scan the label.";
+      if (!/cancel/i.test(message)) setError(message);
+    } finally {
+      setIsScanning(false);
+    }
+  }
+
   const filteredFoods = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q ? foods.filter((f) => f.name.includes(q)) : foods;
@@ -122,15 +172,24 @@ export default function FoodsPage() {
       <form className="panel foodForm" onSubmit={submitFood}>
         <div className="panelHeader">
           <h2>{editingId ? "Edit food" : "Add or update food"}</h2>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="foodHeaderActions">
             {editingId && (
               <button className="iconButton" onClick={cancelEdit} title="Cancel edit" type="button">
                 <X size={16} />
               </button>
             )}
-            <BookOpen size={18} />
+            <button className="secondaryButton scanButton" disabled={isScanning} onClick={scanNutritionLabel} type="button">
+              <CameraIcon size={16} />{isScanning ? "Reading…" : "Scan label"}
+            </button>
           </div>
         </div>
+        {scanResult && (
+          <div className={`scanReview ${scanResult.confidence}`}>
+            <strong>{scanResult.confidence} confidence — confirmation required</strong>
+            {scanResult.warnings.length > 0 && <ul>{scanResult.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}
+            <details><summary>Recognized text</summary><pre>{scanResult.raw_text}</pre></details>
+          </div>
+        )}
         <div className="fieldGrid">
           <label>
             <span>Name</span>

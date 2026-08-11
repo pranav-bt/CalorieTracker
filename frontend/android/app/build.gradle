@@ -40,6 +40,8 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    // Bundled Latin OCR model keeps nutrition-label scanning available offline.
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
 }
 
 apply from: 'capacitor.build.gradle'

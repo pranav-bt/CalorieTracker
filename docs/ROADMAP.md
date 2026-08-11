@@ -10,6 +10,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 - All personal, nutrition, inventory, and workout data is stored locally.
 - Online AI features are optional and must never block the offline workflow.
 - Recalibration must show what changed, the evidence used, why it changed, confidence, and an undo path.
+- Publishing and app-store preparation are out of scope; this is a private sideloaded app.
 
 ## Current sprint: private alpha foundation
 
@@ -24,10 +25,10 @@ This file is the living scope record for the Android private alpha. Update it wh
 - [x] Add a seven-day calorie/macro routine.
 - [x] Add transparent baseline/profile nutrition recalibration reports.
 - [ ] Add trend-based nutrition recalibration after sufficient weight and adherence history.
-- [ ] Add on-device nutrition-label OCR with manual confirmation.
+- [x] Add on-device English/Latin nutrition-label OCR with manual confirmation.
 - [ ] Add workout templates and logging for sets, reps, load, RIR/RPE, cardio, pain, and recovery.
 - [ ] Add transparent workout recalibration reports.
-- [ ] Add local inventory.
+- [x] Add local inventory.
 - [ ] Add local export/import backup.
 - [ ] Build and test a private Android APK on a physical device.
 
@@ -38,7 +39,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 - [ ] AI-assisted workout-plan explanations and revisions, with deterministic validation.
 - [ ] Expiration reminders and optional confirmed inventory deductions.
 - [ ] Exercise and body-measurement charts.
-- [ ] Accessibility review and Play Store release preparation.
+- [ ] Accessibility review for comfortable private use.
 
 ## Explicitly deferred
 
@@ -55,7 +56,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 - Final product name and visual identity (working name: Fitness Companion).
 - Metric-only entry or simultaneous metric/imperial support.
-- Supported nutrition-label languages for the first OCR release.
+- Whether later OCR releases need labels beyond English/Latin script.
 - Whether flex days receive a fixed percentage uplift or a user-entered target.
 - Which exercise catalogue and workout styles ship in the first template library.
 - Whether private-alpha AI uses prompt sharing, a small shared API budget, or per-user API keys.
@@ -69,3 +70,4 @@ This file is the living scope record for the Android private alpha. Update it wh
 - Local-only data needs an explicit backup path because uninstalling the app can remove its database.
 - Consumer ChatGPT and Claude subscriptions do not provide third-party API usage. Provider integration remains separately gated.
 - The web production build and tests pass. Native Gradle verification requires a local JDK/Android Studio installation; `JAVA_HOME` is currently unavailable in this workspace environment.
+- The dependency tree currently reports npm audit findings; review them without applying an unbounded automatic upgrade before the private APK handoff.
