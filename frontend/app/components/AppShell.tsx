@@ -7,21 +7,18 @@ import {
   BarChart3,
   BookOpen,
   CalendarDays,
-  Heart,
   Home,
-  Plus,
   Settings,
+  Target,
 } from "lucide-react";
 import { LoveNotePopup } from "./LoveNotePopup";
 import { getLoveNote } from "../db";
 
 const navItems = [
   { href: "/", label: "Home", shortLabel: "Home", icon: Home },
-  { href: "/log-meal", label: "Log Meal", shortLabel: "Log", icon: Plus },
   { href: "/foods", label: "Food Database", shortLabel: "Foods", icon: BookOpen },
-  { href: "/goals", label: "Goals", shortLabel: "Goals", icon: Settings },
+  { href: "/plan", label: "Plan", shortLabel: "Plan", icon: Target },
   { href: "/history", label: "History", shortLabel: "History", icon: CalendarDays },
-  { href: "/heart-points", label: "Heart Points", shortLabel: "Hearts", icon: Heart },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -39,7 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="sideNav">
         <div className="brand">
           <BarChart3 size={22} />
-          <span>Calorie Tracker</span>
+          <span>Fitness Companion</span>
         </div>
         <nav>
           {navItems.map((item) => {
@@ -83,4 +80,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-

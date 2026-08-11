@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { CalendarDays, Save, Settings } from "lucide-react";
 import { getDailySummary, updateSettings } from "../db";
-import type { DailySummary, GoalMode } from "../types";
+import type { CalorieDistributionMode, DailySummary, GoalMode } from "../types";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -12,6 +12,7 @@ export default function GoalsPage() {
   const [goalMode, setGoalMode] = useState<GoalMode>("daily");
   const [dailyGoal, setDailyGoal] = useState("2000");
   const [weeklyGoal, setWeeklyGoal] = useState("14000");
+  const [distributionMode, setDistributionMode] = useState<CalorieDistributionMode>("fixed");
   const [weekStartDay, setWeekStartDay] = useState(0);
   const [weekMessage, setWeekMessage] = useState("");
   const [weekError, setWeekError] = useState("");
@@ -28,6 +29,7 @@ export default function GoalsPage() {
         setGoalMode(s.goal_mode);
         setDailyGoal(String(s.daily_goal));
         setWeeklyGoal(String(s.weekly_goal));
+        setDistributionMode(s.calorie_distribution_mode ?? "fixed");
         setWeekStartDay(s.week_start_day);
         setPartnerName(s.partner_name ?? "");
       })
@@ -42,6 +44,7 @@ export default function GoalsPage() {
         goal_mode: goalMode,
         daily_calorie_goal: goalMode === "daily" ? Number(dailyGoal) : undefined,
         weekly_calorie_goal: goalMode === "weekly" ? Number(weeklyGoal) : undefined,
+        calorie_distribution_mode: distributionMode,
       });
       setSummary(s);
       setDailyGoal(String(s.daily_goal));
@@ -87,6 +90,34 @@ export default function GoalsPage() {
           <span>Partner&apos;s name (shown on dashboard)</span>
           <input placeholder="e.g. Priya" type="text" value={partnerName} onChange={(e) => setPartnerName(e.target.value)} />
         </label>
+        <div>
+          <span className="fieldLabel">Target behavior</span>
+          <div className="toggleGroup">
+            <label>
+              <input
+                checked={distributionMode === "fixed"}
+                name="distributionMode"
+                onChange={() => setDistributionMode("fixed")}
+                type="radio"
+              />
+              Fixed daily
+            </label>
+            <label>
+              <input
+                checked={distributionMode === "flexible_weekly"}
+                name="distributionMode"
+                onChange={() => setDistributionMode("flexible_weekly")}
+                type="radio"
+              />
+              Flexible week
+            </label>
+          </div>
+          <p className="fieldHint">
+            {distributionMode === "fixed"
+              ? "Every day keeps its planned target."
+              : "Earlier over- or under-target days are spread across the remaining days."}
+          </p>
+        </div>
         <button type="submit"><Save size={18} />Save</button>
         {nameMessage && <p className="success">{nameMessage}</p>}
         {nameError && <p className="error">{nameError}</p>}

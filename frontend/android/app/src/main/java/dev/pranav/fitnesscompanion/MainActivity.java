@@ -1,4 +1,4 @@
-package dev.pranav.calorietracker;
+package dev.pranav.fitnesscompanion;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -324,9 +324,185 @@ button:disabled {
   gap: 16px;
 }
 
+.quickMealForm {
+  display: grid;
+  gap: 14px;
+}
+
+.quickMealRows {
+  display: grid;
+  gap: 8px;
+}
+
+.quickMealRow {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 100px 100px 40px;
+}
+
+.quickMealRow input,
+.quickMealRow select,
+.quickMealRow button {
+  min-height: 42px;
+}
+
 .settingsForm {
   display: grid;
   gap: 14px;
+}
+
+.planForm {
+  display: grid;
+  gap: 18px;
+}
+
+.profileGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.profileGrid input,
+.profileGrid select {
+  width: 100%;
+}
+
+.formDetails {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.formDetails summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.detailsGrid {
+  margin-top: 14px;
+}
+
+.dayPicker {
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.dayPicker legend {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.dayPicker label,
+.inlineControl label {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.dayPicker label {
+  background: #f7f9f5;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.dayPicker input,
+.inlineControl input {
+  min-height: auto;
+  width: auto;
+}
+
+.inlineControl {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.planExplanation {
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 16px;
+}
+
+.planWeekGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.planWeekGrid div {
+  background: #f7f9f5;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  text-align: center;
+}
+
+.planWeekGrid span,
+.planWeekGrid small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.planHistory,
+.recalibrationCard ul {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.planHistory li,
+.recalibrationCard li {
+  border-top: 1px solid var(--line);
+  padding: 12px 0;
+}
+
+.planHistory li {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.planHistory small,
+.recalibrationCard li span {
+  color: var(--muted);
+  display: block;
+  margin-top: 4px;
+}
+
+.activePill {
+  background: #e3f1de;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 9px;
+}
+
+.secondaryButton {
+  background: white;
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.recalibrationCard h3 {
+  font-size: 14px;
+  margin-top: 18px;
+}
+
+.confidenceLine {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 14px;
 }
 
 .weekMetrics {
@@ -339,6 +515,53 @@ button:disabled {
 .weekMetrics strong {
   display: block;
   font-size: 24px;
+}
+
+.macroGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.macroMetric {
+  background: #f7f9f5;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.macroMetric strong,
+.macroMetric small {
+  display: block;
+}
+
+.macroMetric strong {
+  font-size: 22px;
+  margin-top: 4px;
+}
+
+.macroMetric small {
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.macroTrack {
+  background: #e4e9e1;
+  border-radius: 999px;
+  height: 5px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.macroTrack span {
+  background: var(--accent);
+  display: block;
+  height: 100%;
+}
+
+.compactText {
+  margin-top: 12px;
 }
 
 .barChart {
@@ -443,6 +666,20 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+.fieldLabel {
+  color: var(--muted);
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.fieldHint {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
 .stackedField input {
   width: 100%;
 }
@@ -525,6 +762,15 @@ button:disabled {
   border-top: 2px solid var(--line);
   margin-top: 8px;
   padding-top: 14px;
+}
+
+.mealMacroLine {
+  color: var(--muted);
+  display: flex;
+  font-size: 13px;
+  gap: 16px;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 
 .error {
@@ -1199,6 +1445,12 @@ button:disabled {
   white-space: nowrap;
 }
 
+.foodListItem > small {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .foodListActions {
   display: flex;
   gap: 4px;
@@ -1215,6 +1467,39 @@ button:disabled {
 }
 
 @media (max-width: 760px) {
+  .quickMealRow {
+    grid-template-columns: minmax(0, 1fr) 80px 40px;
+  }
+
+  .quickMealRow select {
+    grid-column: 1 / 3;
+  }
+
+  .quickMealRow button {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+  .profileGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .planWeekGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .macroGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .foodListItem {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .foodListItem > small {
+    flex-basis: 100%;
+    order: 3;
+  }
+
   /* ── Layout ── */
   .appShell {
     grid-template-columns: 1fr;

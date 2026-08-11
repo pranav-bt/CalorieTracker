@@ -231,6 +231,14 @@ function MealItems({
   meal: Pick<MealRecord, "items" | "total_calories">;
   compact?: boolean;
 }) {
+  const macroTotals = meal.items.reduce(
+    (totals, item) => ({
+      protein: totals.protein + (item.protein_g ?? 0),
+      carbs: totals.carbs + (item.carbs_g ?? 0),
+      fat: totals.fat + (item.fat_g ?? 0),
+    }),
+    { protein: 0, carbs: 0, fat: 0 }
+  );
   return (
     <>
       <ul className={compact ? "inlineItems" : "items"}>
@@ -244,10 +252,17 @@ function MealItems({
         ))}
       </ul>
       {!compact && (
-        <div className="totalLine">
-          <span>Total</span>
-          <strong>{meal.total_calories}</strong>
-        </div>
+        <>
+          <div className="mealMacroLine">
+            <span>P {Math.round(macroTotals.protein * 10) / 10}g</span>
+            <span>C {Math.round(macroTotals.carbs * 10) / 10}g</span>
+            <span>F {Math.round(macroTotals.fat * 10) / 10}g</span>
+          </div>
+          <div className="totalLine">
+            <span>Total</span>
+            <strong>{meal.total_calories}</strong>
+          </div>
+        </>
       )}
     </>
   );

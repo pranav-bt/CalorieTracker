@@ -2,27 +2,37 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CheckCircle2, Circle, Flame, Heart, Trophy } from "lucide-react";
-import { getDailySummary, getHistory, completeChallenge as dbCompleteChallenge } from "./db";
-import type { DailySummary, HistoryDay } from "./types";
+import { Activity, ArrowRight, CalendarDays, CheckCircle2, Circle, Flame, Trophy } from "lucide-react";
+import { getDailyMacroSummary, getDailySummary, getHistory, completeChallenge as dbCompleteChallenge } from "./db";
+import type { DailyMacroSummary, DailySummary, HistoryDay } from "./types";
+import { QuickMealLogger } from "./components/QuickMealLogger";
+
+const EMPTY_MACROS: DailyMacroSummary = {
+  consumed: { protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 },
+  target: { protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 },
+  plan_id: null,
+};
 
 export default function Home() {
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [history, setHistory] = useState<HistoryDay[]>([]);
+  const [macros, setMacros] = useState<DailyMacroSummary>(EMPTY_MACROS);
   const [error, setError] = useState("");
   const [challengeDone, setChallengeDone] = useState(false);
 
-  useEffect(() => {
-    async function loadDashboard() {
-      const [summaryData, historyData] = await Promise.all([
-        getDailySummary(),
-        getHistory(),
-      ]);
-      setSummary(summaryData);
-      setChallengeDone(summaryData.challenge_completed);
-      setHistory(historyData);
-    }
+  async function loadDashboard() {
+    const [summaryData, historyData, macroData] = await Promise.all([
+      getDailySummary(),
+      getHistory(),
+      getDailyMacroSummary(),
+    ]);
+    setSummary(summaryData);
+    setChallengeDone(summaryData.challenge_completed);
+    setHistory(historyData);
+    setMacros(macroData);
+  }
 
+  useEffect(() => {
     loadDashboard().catch((caught) => {
       setError(caught instanceof Error ? caught.message : "Backend is not reachable.");
     });
@@ -53,12 +63,6 @@ export default function Home() {
               <Flame size={15} />
               {summary.streak} day{summary.streak === 1 ? "" : "s"}
             </div>
-          )}
-          {summary && summary.heart_points > 0 && (
-            <Link className="heartBadge" href="/heart-points">
-              <Heart size={15} />
-              {summary.heart_points} pts
-            </Link>
           )}
           <Link className="textButton" href="/log-meal">
             Log meal
@@ -93,6 +97,24 @@ export default function Home() {
       <div className="progressTrack" aria-label={`${percent}% of target used`}>
         <span style={{ width: `${percent}%` }} />
       </div>
+
+      <QuickMealLogger onLogged={loadDashboard} />
+
+      <section className="panel">
+        <div className="panelHeader">
+          <h2>Today&apos;s macros</h2>
+          <Activity size={18} />
+        </div>
+        <div className="macroGrid">
+          <MacroMetric label="Protein" consumed={macros.consumed.protein_g} target={macros.target.protein_g} />
+          <MacroMetric label="Carbs" consumed={macros.consumed.carbs_g} target={macros.target.carbs_g} />
+          <MacroMetric label="Fat" consumed={macros.consumed.fat_g} target={macros.target.fat_g} />
+          <MacroMetric label="Fiber" consumed={macros.consumed.fiber_g} target={macros.target.fiber_g} />
+        </div>
+        {!macros.plan_id && (
+          <p className="muted compactText">Macro targets will appear after the first plan is calculated.</p>
+        )}
+      </section>
 
       {summary?.affirmation && (
         <div className="affirmationCard">
@@ -186,6 +208,22 @@ export default function Home() {
         </section>
       )}
     </section>
+  );
+}
+
+function MacroMetric({ label, consumed, target }: { label: string; consumed: number; target: number }) {
+  const percent = target > 0 ? Math.min(100, Math.round((consumed / target) * 100)) : 0;
+  return (
+    <div className="macroMetric">
+      <div>
+        <span className="metricLabel">{label}</span>
+        <strong>{consumed}g</strong>
+        <small>{target > 0 ? `of ${target}g` : "No target"}</small>
+      </div>
+      <div className="macroTrack" aria-label={`${label}: ${consumed} of ${target} grams`}>
+        <span style={{ width: `${percent}%` }} />
+      </div>
+    </div>
   );
 }
 

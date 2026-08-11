@@ -18,9 +18,11 @@ import {
 } from "./messages";
 import type {
   DailySummary,
+  DailyMacroSummary,
   Food,
   HeartPointsBalance,
   HistoryDay,
+  MealItem,
   MealRecord,
   MealSummary,
   Redemption,
@@ -60,6 +62,25 @@ function normalizeUnit(unit: string): Unit {
   return (unit === "gm" ? "g" : unit) as Unit;
 }
 
+function roundMacro(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function rowToFood(row: Record<string, unknown>): Food {
+  return {
+    id: row.id as number,
+    name: row.name as string,
+    unit: row.unit as Unit,
+    reference_quantity: row.reference_quantity as number,
+    reference_calories: row.reference_calories as number,
+    protein_g: row.protein_g as number,
+    carbs_g: row.carbs_g as number,
+    fat_g: row.fat_g as number,
+    fiber_g: row.fiber_g as number,
+    source: row.source as "manual" | "label_scan",
+  };
+}
+
 function pick<T>(pool: T[], idx: number): T {
   return pool[((idx % pool.length) + pool.length) % pool.length];
 }
@@ -77,6 +98,7 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
   const dailyGoal = s.daily_calorie_goal as number;
   const weeklyGoal = s.weekly_calorie_goal as number;
   const goalMode = s.goal_mode as string;
+  const distributionMode = (s.calorie_distribution_mode as string) ?? "fixed";
 
   const cur = new Date(today + "T00:00:00");
   const pyWeekday = (cur.getDay() + 6) % 7; // JS→Python weekday
@@ -128,7 +150,9 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
 
   const daysLeft = Math.floor((wEnd.getTime() - cur.getTime()) / 86_400_000) + 1;
   const delta = consumedBefore - dailyGoal * loggedDaysBefore;
-  const adjustedGoal = Math.max(0, Math.round(dailyGoal - delta / daysLeft));
+  const adjustedGoal = distributionMode === "flexible_weekly"
+    ? Math.max(0, Math.round(dailyGoal - delta / daysLeft))
+    : dailyGoal;
 
   let endOfDayNote: string | null = null;
   if (todayConsumed > 0) {
@@ -152,6 +176,7 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
     date: today,
     goal: adjustedGoal,
     goal_mode: goalMode as "daily" | "weekly",
+    calorie_distribution_mode: distributionMode as "fixed" | "flexible_weekly",
     daily_goal: dailyGoal,
     weekly_goal: weeklyGoal,
     adjusted_goal: adjustedGoal,
@@ -199,6 +224,67 @@ export async function getDailySummary(): Promise<DailySummary> {
   return r.json();
 }
 
+export async function getDailyMacroSummary(): Promise<DailyMacroSummary> {
+  const emptyMacros = { protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 };
+  if (native()) {
+    const db = await getDb();
+    const today = getToday();
+    const jsDay = new Date(`${today}T00:00:00`).getDay();
+    const weekday = (jsDay + 6) % 7;
+    const [consumedResult, targetResult] = await Promise.all([
+      db.query(
+        `SELECT COALESCE(SUM(total_protein_g), 0) AS protein_g,
+                COALESCE(SUM(total_carbs_g), 0) AS carbs_g,
+                COALESCE(SUM(total_fat_g), 0) AS fat_g,
+                COALESCE(SUM(total_fiber_g), 0) AS fiber_g
+         FROM meals WHERE date=?`,
+        [today]
+      ),
+      db.query(
+        `SELECT p.id AS plan_id, d.protein_g, d.carbs_g, d.fat_g, d.fiber_g
+         FROM nutrition_plans p
+         JOIN nutrition_plan_days d ON d.plan_id=p.id
+         WHERE p.is_active=1 AND d.weekday=?
+         ORDER BY p.created_at DESC, p.id DESC LIMIT 1`,
+        [weekday]
+      ),
+    ]);
+    const consumed = consumedResult.values?.[0] ?? emptyMacros;
+    const target = targetResult.values?.[0];
+    return {
+      consumed: {
+        protein_g: roundMacro(consumed.protein_g as number),
+        carbs_g: roundMacro(consumed.carbs_g as number),
+        fat_g: roundMacro(consumed.fat_g as number),
+        fiber_g: roundMacro(consumed.fiber_g as number),
+      },
+      target: target ? {
+        protein_g: target.protein_g as number,
+        carbs_g: target.carbs_g as number,
+        fat_g: target.fat_g as number,
+        fiber_g: target.fiber_g as number,
+      } : emptyMacros,
+      plan_id: target ? target.plan_id as number : null,
+    };
+  }
+
+  try {
+    const meals = await getMeals();
+    return {
+      consumed: {
+        protein_g: roundMacro(meals.reduce((sum, meal) => sum + (meal.total_protein_g ?? 0), 0)),
+        carbs_g: roundMacro(meals.reduce((sum, meal) => sum + (meal.total_carbs_g ?? 0), 0)),
+        fat_g: roundMacro(meals.reduce((sum, meal) => sum + (meal.total_fat_g ?? 0), 0)),
+        fiber_g: roundMacro(meals.reduce((sum, meal) => sum + (meal.total_fiber_g ?? 0), 0)),
+      },
+      target: emptyMacros,
+      plan_id: null,
+    };
+  } catch {
+    return { consumed: emptyMacros, target: emptyMacros, plan_id: null };
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API: History
 // ─────────────────────────────────────────────────────────────────────────────
@@ -225,13 +311,16 @@ export async function getMeals(dateFilter?: string): Promise<MealRecord[]> {
     const db = await getDb();
     const d = dateFilter ?? getToday();
     const { values: meals } = await db.query(
-      "SELECT id, date, total_calories FROM meals WHERE date=? ORDER BY created_at DESC, id DESC",
+      `SELECT id, date, total_calories, total_protein_g, total_carbs_g,
+              total_fat_g, total_fiber_g
+       FROM meals WHERE date=? ORDER BY created_at DESC, id DESC`,
       [d]
     );
     const result: MealRecord[] = [];
     for (const meal of meals ?? []) {
       const { values: items } = await db.query(
-        "SELECT name, quantity, unit, calories FROM meal_items WHERE meal_id=? ORDER BY id",
+        `SELECT name, quantity, unit, calories, protein_g, carbs_g, fat_g, fiber_g
+         FROM meal_items WHERE meal_id=? ORDER BY id`,
         [meal.id]
       );
       result.push({
@@ -243,7 +332,15 @@ export async function getMeals(dateFilter?: string): Promise<MealRecord[]> {
           quantity: i.quantity as number,
           unit: i.unit as Unit,
           calories: i.calories as number,
+          protein_g: i.protein_g as number,
+          carbs_g: i.carbs_g as number,
+          fat_g: i.fat_g as number,
+          fiber_g: i.fiber_g as number,
         })),
+        total_protein_g: meal.total_protein_g as number,
+        total_carbs_g: meal.total_carbs_g as number,
+        total_fat_g: meal.total_fat_g as number,
+        total_fiber_g: meal.total_fiber_g as number,
       });
     }
     return result;
@@ -289,40 +386,74 @@ export async function logMeal(
 
     // Look up foods
     const { values: foodRows } = await db.query(
-      "SELECT name, unit, reference_quantity, reference_calories FROM foods"
+      `SELECT name, unit, reference_quantity, reference_calories,
+              protein_g, carbs_g, fat_g, fiber_g
+       FROM foods`
     );
-    const foodDb: Record<string, { unit: string; ref_qty: number; ref_cal: number }> = {};
+    const foodDb: Record<string, {
+      unit: string;
+      ref_qty: number;
+      ref_cal: number;
+      protein_g: number;
+      carbs_g: number;
+      fat_g: number;
+      fiber_g: number;
+    }> = {};
     for (const f of foodRows ?? []) {
       foodDb[f.name as string] = {
         unit: f.unit as string,
         ref_qty: f.reference_quantity as number,
         ref_cal: f.reference_calories as number,
+        protein_g: f.protein_g as number,
+        carbs_g: f.carbs_g as number,
+        fat_g: f.fat_g as number,
+        fiber_g: f.fiber_g as number,
       };
     }
 
-    const calculated: { name: string; quantity: number; unit: Unit; calories: number }[] = [];
+    const calculated: MealItem[] = [];
     for (const item of items) {
       const name = item.name.trim().toLowerCase();
       const unit = normalizeUnit(item.unit);
       const food = foodDb[name];
       if (!food) throw new Error(`Unknown food: ${name}`);
       if (unit !== food.unit) throw new Error(`${name} must be logged in ${food.unit}`);
-      const calories = Math.round((item.quantity / food.ref_qty) * food.ref_cal);
-      calculated.push({ name, quantity: item.quantity, unit, calories });
+      const ratio = item.quantity / food.ref_qty;
+      calculated.push({
+        name,
+        quantity: item.quantity,
+        unit,
+        calories: Math.round(ratio * food.ref_cal),
+        protein_g: roundMacro(ratio * food.protein_g),
+        carbs_g: roundMacro(ratio * food.carbs_g),
+        fat_g: roundMacro(ratio * food.fat_g),
+        fiber_g: roundMacro(ratio * food.fiber_g),
+      });
     }
 
     const totalCalories = calculated.reduce((s, i) => s + i.calories, 0);
+    const totalProtein = roundMacro(calculated.reduce((s, i) => s + i.protein_g, 0));
+    const totalCarbs = roundMacro(calculated.reduce((s, i) => s + i.carbs_g, 0));
+    const totalFat = roundMacro(calculated.reduce((s, i) => s + i.fat_g, 0));
+    const totalFiber = roundMacro(calculated.reduce((s, i) => s + i.fiber_g, 0));
 
     const { changes } = await db.run(
-      "INSERT INTO meals (date, total_calories) VALUES (?, ?)",
-      [today, totalCalories]
+      `INSERT INTO meals (
+         date, total_calories, total_protein_g, total_carbs_g, total_fat_g, total_fiber_g
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+      [today, totalCalories, totalProtein, totalCarbs, totalFat, totalFiber]
     );
     const mealId = changes?.lastId as number;
 
     for (const item of calculated) {
       await db.run(
-        "INSERT INTO meal_items (meal_id, name, quantity, unit, calories) VALUES (?, ?, ?, ?, ?)",
-        [mealId, item.name, item.quantity, item.unit, item.calories]
+        `INSERT INTO meal_items (
+           meal_id, name, quantity, unit, calories, protein_g, carbs_g, fat_g, fiber_g
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          mealId, item.name, item.quantity, item.unit, item.calories,
+          item.protein_g, item.carbs_g, item.fat_g, item.fiber_g,
+        ]
       );
     }
 
@@ -352,6 +483,10 @@ export async function logMeal(
       date: today,
       items: calculated,
       total_calories: totalCalories,
+      total_protein_g: totalProtein,
+      total_carbs_g: totalCarbs,
+      total_fat_g: totalFat,
+      total_fiber_g: totalFiber,
       daily_total: summary.consumed,
       remaining: summary.remaining,
       milestone,
@@ -379,7 +514,9 @@ export async function getFoods(): Promise<Food[]> {
   if (native()) {
     const db = await getDb();
     const { values } = await db.query(
-      "SELECT id, name, unit, reference_quantity, reference_calories FROM foods ORDER BY name"
+      `SELECT id, name, unit, reference_quantity, reference_calories,
+              protein_g, carbs_g, fat_g, fiber_g, source
+       FROM foods ORDER BY name`
     );
     return (values ?? []).map((f) => ({
       id: f.id as number,
@@ -387,6 +524,11 @@ export async function getFoods(): Promise<Food[]> {
       unit: f.unit as Unit,
       reference_quantity: f.reference_quantity as number,
       reference_calories: f.reference_calories as number,
+      protein_g: f.protein_g as number,
+      carbs_g: f.carbs_g as number,
+      fat_g: f.fat_g as number,
+      fiber_g: f.fiber_g as number,
+      source: f.source as "manual" | "label_scan",
     }));
   }
   const r = await fetch(`${API}/foods`);
@@ -395,21 +537,51 @@ export async function getFoods(): Promise<Food[]> {
 }
 
 export async function upsertFood(
-  food: { name: string; unit: string; reference_quantity: number; reference_calories: number }
+  food: {
+    name: string;
+    unit: string;
+    reference_quantity: number;
+    reference_calories: number;
+    protein_g?: number;
+    carbs_g?: number;
+    fat_g?: number;
+    fiber_g?: number;
+    source?: "manual" | "label_scan";
+  }
 ): Promise<Food> {
   if (native()) {
     const db = await getDb();
     const name = food.name.trim().toLowerCase();
     const unit = normalizeUnit(food.unit);
     await db.run(
-      `INSERT INTO foods (name, unit, reference_quantity, reference_calories)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(name) DO UPDATE SET unit=excluded.unit, reference_quantity=excluded.reference_quantity, reference_calories=excluded.reference_calories`,
-      [name, unit, food.reference_quantity, food.reference_calories]
+      `INSERT INTO foods (
+         name, unit, reference_quantity, reference_calories,
+         protein_g, carbs_g, fat_g, fiber_g, source, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT(name) DO UPDATE SET
+         unit=excluded.unit,
+         reference_quantity=excluded.reference_quantity,
+         reference_calories=excluded.reference_calories,
+         protein_g=excluded.protein_g,
+         carbs_g=excluded.carbs_g,
+         fat_g=excluded.fat_g,
+         fiber_g=excluded.fiber_g,
+         source=excluded.source,
+         updated_at=datetime('now')`,
+      [
+        name, unit, food.reference_quantity, food.reference_calories,
+        food.protein_g ?? 0, food.carbs_g ?? 0, food.fat_g ?? 0, food.fiber_g ?? 0,
+        food.source ?? "manual",
+      ]
     );
-    const { values } = await db.query("SELECT id, name, unit, reference_quantity, reference_calories FROM foods WHERE name=?", [name]);
+    const { values } = await db.query(
+      `SELECT id, name, unit, reference_quantity, reference_calories,
+              protein_g, carbs_g, fat_g, fiber_g, source
+       FROM foods WHERE name=?`,
+      [name]
+    );
     const f = values![0];
-    return { id: f.id as number, name: f.name as string, unit: f.unit as Unit, reference_quantity: f.reference_quantity as number, reference_calories: f.reference_calories as number };
+    return rowToFood(f);
   }
   const r = await fetch(`${API}/foods`, {
     method: "POST",
@@ -422,20 +594,42 @@ export async function upsertFood(
 
 export async function updateFood(
   id: number,
-  food: { name: string; unit: string; reference_quantity: number; reference_calories: number }
+  food: {
+    name: string;
+    unit: string;
+    reference_quantity: number;
+    reference_calories: number;
+    protein_g?: number;
+    carbs_g?: number;
+    fat_g?: number;
+    fiber_g?: number;
+    source?: "manual" | "label_scan";
+  }
 ): Promise<Food> {
   if (native()) {
     const db = await getDb();
     const name = food.name.trim().toLowerCase();
     const unit = normalizeUnit(food.unit);
     const { changes } = await db.run(
-      "UPDATE foods SET name=?, unit=?, reference_quantity=?, reference_calories=? WHERE id=?",
-      [name, unit, food.reference_quantity, food.reference_calories, id]
+      `UPDATE foods SET
+         name=?, unit=?, reference_quantity=?, reference_calories=?,
+         protein_g=?, carbs_g=?, fat_g=?, fiber_g=?, source=?, updated_at=datetime('now')
+       WHERE id=?`,
+      [
+        name, unit, food.reference_quantity, food.reference_calories,
+        food.protein_g ?? 0, food.carbs_g ?? 0, food.fat_g ?? 0, food.fiber_g ?? 0,
+        food.source ?? "manual", id,
+      ]
     );
     if (!changes?.changes) throw new Error("Food not found.");
-    const { values } = await db.query("SELECT id, name, unit, reference_quantity, reference_calories FROM foods WHERE id=?", [id]);
+    const { values } = await db.query(
+      `SELECT id, name, unit, reference_quantity, reference_calories,
+              protein_g, carbs_g, fat_g, fiber_g, source
+       FROM foods WHERE id=?`,
+      [id]
+    );
     const f = values![0];
-    return { id: f.id as number, name: f.name as string, unit: f.unit as Unit, reference_quantity: f.reference_quantity as number, reference_calories: f.reference_calories as number };
+    return rowToFood(f);
   }
   const r = await fetch(`${API}/foods/${id}`, {
     method: "PATCH",
@@ -472,6 +666,7 @@ export async function getSettings(): Promise<Settings> {
       history_retention_days: s.history_retention_days as number,
       week_start_day: s.week_start_day as number,
       partner_name: s.partner_name as string,
+      calorie_distribution_mode: s.calorie_distribution_mode as "fixed" | "flexible_weekly",
     };
   }
   const r = await fetch(`${API}/settings`);
@@ -487,6 +682,7 @@ export async function updateSettings(
     history_retention_days: number;
     week_start_day: number;
     partner_name: string;
+    calorie_distribution_mode: "fixed" | "flexible_weekly";
   }>
 ): Promise<DailySummary> {
   if (native()) {
@@ -500,13 +696,17 @@ export async function updateSettings(
     const retention = (update.history_retention_days ?? cur.history_retention_days) as number;
     const weekStartDay = (update.week_start_day ?? cur.week_start_day) as number;
     const partnerName = (update.partner_name ?? cur.partner_name) as string;
+    const distributionMode = (update.calorie_distribution_mode ?? cur.calorie_distribution_mode) as string;
 
     if (goalMode === "daily") weeklyGoal = dailyGoal * 7;
     else if (goalMode === "weekly") dailyGoal = Math.round(weeklyGoal / 7);
 
     await db.run(
-      "UPDATE settings SET goal_mode=?, daily_calorie_goal=?, weekly_calorie_goal=?, history_retention_days=?, week_start_day=?, partner_name=? WHERE id=1",
-      [goalMode, dailyGoal, weeklyGoal, retention, weekStartDay, partnerName]
+      `UPDATE settings SET
+         goal_mode=?, daily_calorie_goal=?, weekly_calorie_goal=?, history_retention_days=?,
+         week_start_day=?, partner_name=?, calorie_distribution_mode=?
+       WHERE id=1`,
+      [goalMode, dailyGoal, weeklyGoal, retention, weekStartDay, partnerName, distributionMode]
     );
     return nativeDailySummary();
   }

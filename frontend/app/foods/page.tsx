@@ -11,6 +11,10 @@ export default function FoodsPage() {
   const [foodQuantity, setFoodQuantity] = useState("10");
   const [foodUnit, setFoodUnit] = useState<Unit>("g");
   const [foodCalories, setFoodCalories] = useState("58");
+  const [protein, setProtein] = useState("0");
+  const [carbs, setCarbs] = useState("0");
+  const [fat, setFat] = useState("0");
+  const [fiber, setFiber] = useState("0");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
@@ -30,6 +34,10 @@ export default function FoodsPage() {
     setFoodQuantity(String(food.reference_quantity));
     setFoodUnit(food.unit as Unit);
     setFoodCalories(String(food.reference_calories));
+    setProtein(String(food.protein_g));
+    setCarbs(String(food.carbs_g));
+    setFat(String(food.fat_g));
+    setFiber(String(food.fiber_g));
     setMessage("");
     setError("");
   }
@@ -40,6 +48,10 @@ export default function FoodsPage() {
     setFoodQuantity("10");
     setFoodUnit("g");
     setFoodCalories("58");
+    setProtein("0");
+    setCarbs("0");
+    setFat("0");
+    setFiber("0");
     setMessage("");
     setError("");
   }
@@ -49,7 +61,12 @@ export default function FoodsPage() {
     setError("");
     setMessage("");
 
-    const validationError = validateFoodForm(foodName, foodQuantity, foodCalories);
+    const validationError = validateFoodForm(
+      foodName,
+      foodQuantity,
+      foodCalories,
+      [protein, carbs, fat, fiber]
+    );
     if (validationError) { setError(validationError); return; }
 
     try {
@@ -58,6 +75,11 @@ export default function FoodsPage() {
         unit: foodUnit,
         reference_quantity: Number(foodQuantity),
         reference_calories: Number(foodCalories),
+        protein_g: Number(protein || 0),
+        carbs_g: Number(carbs || 0),
+        fat_g: Number(fat || 0),
+        fiber_g: Number(fiber || 0),
+        source: "manual" as const,
       };
       const savedFood = editingId
         ? await updateFood(editingId, payload)
@@ -147,6 +169,22 @@ export default function FoodsPage() {
               onChange={(e) => setFoodCalories(e.target.value)}
             />
           </label>
+          <label>
+            <span>Protein (g)</span>
+            <input min="0" step="0.1" type="number" value={protein} onChange={(e) => setProtein(e.target.value)} />
+          </label>
+          <label>
+            <span>Carbohydrates (g)</span>
+            <input min="0" step="0.1" type="number" value={carbs} onChange={(e) => setCarbs(e.target.value)} />
+          </label>
+          <label>
+            <span>Fat (g)</span>
+            <input min="0" step="0.1" type="number" value={fat} onChange={(e) => setFat(e.target.value)} />
+          </label>
+          <label>
+            <span>Fiber (g)</span>
+            <input min="0" step="0.1" type="number" value={fiber} onChange={(e) => setFiber(e.target.value)} />
+          </label>
         </div>
         <button type="submit">
           <Save size={18} />
@@ -175,6 +213,10 @@ export default function FoodsPage() {
                 <strong>
                   {food.reference_calories} kcal / {food.reference_quantity} {food.unit}
                 </strong>
+                <small className="muted">
+                  P {food.protein_g ?? 0}g · C {food.carbs_g ?? 0}g · F {food.fat_g ?? 0}g
+                  {(food.fiber_g ?? 0) > 0 ? ` · Fiber ${food.fiber_g}g` : ""}
+                </small>
                 <div className="foodListActions">
                   <button
                     className="iconButton"
@@ -204,12 +246,19 @@ export default function FoodsPage() {
   );
 }
 
-function validateFoodForm(name: string, quantity: string, calories: string): string | null {
+function validateFoodForm(
+  name: string,
+  quantity: string,
+  calories: string,
+  macros: string[]
+): string | null {
   if (!name.trim()) return "Please enter a food name.";
   const qty = Number(quantity);
   if (!quantity || isNaN(qty) || qty <= 0) return "Quantity must be greater than zero.";
   const cal = Number(calories);
   if (calories === "" || isNaN(cal) || cal < 0) return "Calories must be zero or more.";
+  if (macros.some((value) => value !== "" && (isNaN(Number(value)) || Number(value) < 0))) {
+    return "Macro values must be zero or more.";
+  }
   return null;
 }
-

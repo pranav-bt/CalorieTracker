@@ -4,8 +4,8 @@ import { DbProvider } from "./db/DbProvider";
 import "./styles.css";
 
 export const metadata: Metadata = {
-  title: "Calorie Tracker",
-  description: "Deterministic single-user calorie tracker",
+  title: "Fitness Companion",
+  description: "Private, offline-first nutrition and training companion",
 };
 
 export const viewport: Viewport = {
