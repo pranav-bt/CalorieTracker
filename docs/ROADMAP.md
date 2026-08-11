@@ -29,8 +29,9 @@ This file is the living scope record for the Android private alpha. Update it wh
 - [x] Add workout templates and logging for sets, reps, load, RIR/RPE, cardio, pain, and recovery.
 - [x] Add transparent workout recalibration reports.
 - [x] Add local inventory.
-- [ ] Add local export/import backup.
-- [ ] Build and test a private Android APK on a physical device.
+- [x] Add validated local JSON export/import backup with automatic pre-import recovery.
+- [x] Build and verify a signed private Android debug APK.
+- [ ] Complete the physical-device smoke test in `docs/ALPHA_TESTING.md`.
 
 ## Next after the offline alpha
 
@@ -71,5 +72,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 - Workout progression requires two qualifying logs for the same exercise. Missing effort data prevents progression, and any recent pain report holds progression for review.
 - Local-only data needs an explicit backup path because uninstalling the app can remove its database.
 - Consumer ChatGPT and Claude subscriptions do not provide third-party API usage. Provider integration remains separately gated.
-- The web production build and tests pass. Native Gradle verification requires a local JDK/Android Studio installation; `JAVA_HOME` is currently unavailable in this workspace environment.
+- The web production build, 17 unit tests, Capacitor sync, and native Gradle debug build pass.
+- Capacitor 8 native plugins require a Java 21 toolchain. A checksum-verified Temurin JDK is kept in the ignored local `.tools` directory for builds.
+- The universal debug APK is roughly 73 MB because it includes offline OCR and SQLite native libraries for ARM and x86. An ARM-only/release split can reduce distribution size after device compatibility is confirmed.
 - The dependency tree currently reports npm audit findings; review them without applying an unbounded automatic upgrade before the private APK handoff.

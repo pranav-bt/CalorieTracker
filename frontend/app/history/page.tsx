@@ -1,8 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronDown, ChevronUp, Save, Settings, Trash2 } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronUp, Download, RotateCcw, Save, Settings, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { deleteHistoryDay, deleteMeal, getHistory, getMeals, getSettings, updateSettings } from "../db";
+import { hasSafetyBackup, restoreDatabaseBackup, restoreSafetyBackup, shareDatabaseBackup } from "../db/backup";
 import type { HistoryDay, MealRecord, Settings as AppSettings } from "../types";
 
 export default function HistoryPage() {
@@ -16,6 +18,11 @@ export default function HistoryPage() {
   const [retentionMessage, setRetentionMessage] = useState("");
   const [retentionError, setRetentionError] = useState("");
   const [error, setError] = useState("");
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupMessage, setBackupMessage] = useState("");
+  const [backupError, setBackupError] = useState("");
+  const [safetyBackupAvailable, setSafetyBackupAvailable] = useState(false);
+  const [isNative, setIsNative] = useState(false);
 
   async function loadHistory() {
     setHistory(await getHistory());
@@ -29,6 +36,10 @@ export default function HistoryPage() {
 
   useEffect(() => {
     Promise.all([loadHistory(), loadSettings()]).catch(() => setError("Could not load data."));
+    if (Capacitor.isNativePlatform()) {
+      setIsNative(true);
+      hasSafetyBackup().then(setSafetyBackupAvailable).catch(() => undefined);
+    }
   }, []);
 
   const filteredHistory = useMemo(() => history.filter((d) => {
@@ -73,6 +84,44 @@ export default function HistoryPage() {
       await loadSettings();
       setRetentionMessage("Saved");
     } catch (e) { setRetentionError(e instanceof Error ? e.message : "Could not save."); }
+  }
+
+  async function exportBackup() {
+    setBackupBusy(true); setBackupError(""); setBackupMessage("");
+    try {
+      await shareDatabaseBackup();
+      setBackupMessage("Backup prepared. Choose where to save it in the Android share sheet.");
+    } catch (e) {
+      setBackupError(e instanceof Error ? e.message : "Could not create backup.");
+    } finally { setBackupBusy(false); }
+  }
+
+  async function importBackup(file: File | undefined) {
+    if (!file) return;
+    if (!window.confirm("Replace all current app data with this backup? A local safety copy will be created first.")) return;
+    setBackupBusy(true); setBackupError(""); setBackupMessage("");
+    try {
+      await restoreDatabaseBackup(await file.text());
+      setBackupMessage("Restore complete. Reloading the app…");
+      window.setTimeout(() => window.location.reload(), 500);
+    } catch (e) {
+      setBackupError(e instanceof Error ? e.message : "Could not restore backup.");
+      setSafetyBackupAvailable(await hasSafetyBackup());
+      setBackupBusy(false);
+    }
+  }
+
+  async function restorePreviousState() {
+    if (!window.confirm("Replace current data with the last automatic pre-import safety copy?")) return;
+    setBackupBusy(true); setBackupError(""); setBackupMessage("");
+    try {
+      await restoreSafetyBackup();
+      setBackupMessage("Previous state restored. Reloading the app…");
+      window.setTimeout(() => window.location.reload(), 500);
+    } catch (e) {
+      setBackupError(e instanceof Error ? e.message : "Could not restore the safety copy.");
+      setBackupBusy(false);
+    }
   }
 
   return (
@@ -172,6 +221,44 @@ export default function HistoryPage() {
         {retentionMessage && <p className="success">{retentionMessage}</p>}
         {retentionError && <p className="error">{retentionError}</p>}
       </form>
+
+      {isNative && (
+        <section className="panel backupPanel">
+          <div className="panelHeader">
+            <div>
+              <h2>Backup and restore</h2>
+              <p className="muted">A backup includes your foods, meals, goals, plans, inventory, workouts, and settings.</p>
+            </div>
+            <ShieldCheck size={18} />
+          </div>
+          <div className="backupActions">
+            <button type="button" onClick={exportBackup} disabled={backupBusy}>
+              <Download size={18} /> Export backup
+            </button>
+            <label className={backupBusy ? "fileButton disabled" : "fileButton"}>
+              <Upload size={18} /> Import backup
+              <input
+                accept="application/json,.json"
+                disabled={backupBusy}
+                onChange={(event) => {
+                  void importBackup(event.target.files?.[0]);
+                  event.target.value = "";
+                }}
+                type="file"
+              />
+            </label>
+            {safetyBackupAvailable && (
+              <button className="secondaryButton" type="button" onClick={restorePreviousState} disabled={backupBusy}>
+                <RotateCcw size={18} /> Undo last import
+              </button>
+            )}
+          </div>
+          <p className="muted">Everything stays on this device unless you explicitly export a file.</p>
+          {backupBusy && <p className="muted">Working…</p>}
+          {backupMessage && <p className="success">{backupMessage}</p>}
+          {backupError && <p className="error">{backupError}</p>}
+        </section>
+      )}
     </section>
   );
 }
