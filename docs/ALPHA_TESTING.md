@@ -22,6 +22,8 @@ Installing a newer APK with the same debug signature should retain local data. U
 - [ ] Discard the active nutrition plan; confirm the previous plan activates, Undo works, and manual calories take over when no plan remains.
 - [ ] Add weight/body measurements and run recalibration; check that the report explains what changed or why no change was made.
 - [ ] Add, edit, and remove an inventory item.
+- [ ] Open Recipes, set preferences and an avoid/allergy item, preview the prompt, and confirm expired or zero-stock ingredients are excluded.
+- [ ] Share the recipe prompt to ChatGPT or Claude; cancel the share sheet once and confirm no app data changes, then complete a share and review the received pantry context.
 - [ ] Generate a workout plan, log sets and recovery/pain data, then run workout recalibration.
 - [ ] Confirm workout creation/logging has no transaction error; restore and discard plans from workout history.
 - [ ] Export a JSON backup from History and save it somewhere outside the app.

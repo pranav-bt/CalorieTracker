@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Minus, PackagePlus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import { ChefHat, Minus, PackagePlus, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { getFoods } from "../db";
 import {
   adjustInventoryQuantity,
@@ -90,7 +91,7 @@ export default function InventoryPage() {
 
   return (
     <section className="pageStack">
-      <div className="pageHeader"><div><p className="eyebrow">Local pantry</p><h1>Inventory</h1></div></div>
+      <div className="pageHeader"><div><p className="eyebrow">Local pantry</p><h1>Inventory</h1></div><Link className="textButton" href="/recipes"><ChefHat size={17} />Find recipes</Link></div>
       <form className="panel inventoryForm" onSubmit={submit}>
         <div className="panelHeader"><h2>{editingId ? "Edit ingredient" : "Add ingredient"}</h2>{editingId ? <button className="iconButton" onClick={reset} title="Cancel edit" type="button"><X size={16} /></button> : <PackagePlus size={18} />}</div>
         <datalist id="inventory-foods">{foods.map((food) => <option key={food.id} value={food.name} />)}</datalist>

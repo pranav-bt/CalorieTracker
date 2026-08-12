@@ -47,7 +47,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 ## Next after the offline alpha
 
-- [ ] Pantry-aware recipe prompt export to the Android share sheet for ChatGPT or Claude.
+- [x] Pantry-aware recipe prompt export to the Android share sheet for ChatGPT or Claude.
 - [ ] Optional integrated recipe assistant through a provider-neutral serverless proxy.
 - [ ] AI-assisted workout-plan explanations and revisions, with deterministic validation.
 - [ ] Expiration reminders and optional confirmed inventory deductions.
@@ -84,6 +84,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 - Workout progression requires two qualifying logs for the same exercise. Missing effort data prevents progression, and any recent pain report holds progression for review.
 - Local-only data needs an explicit backup path because uninstalling the app can remove its database.
 - Consumer ChatGPT and Claude subscriptions do not provide third-party API usage. Provider integration remains separately gated.
+- Recipe suggestions currently use an explicit share/copy handoff: the app filters out expired and zero-stock items, shows the exact prompt, and sends nothing until the user acts.
 - The web production build, unit tests, Capacitor sync, and native Gradle debug build pass.
 - Capacitor 8 native plugins require a Java 21 toolchain. A checksum-verified Temurin JDK is kept in the ignored local `.tools` directory for builds.
 - The universal debug APK is roughly 73 MB because it includes offline OCR and SQLite native libraries for ARM and x86. An ARM-only/release split can reduce distribution size after device compatibility is confirmed.

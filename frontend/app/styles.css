@@ -453,6 +453,121 @@ button:disabled {
   gap: 16px;
 }
 
+.recipeForm {
+  display: grid;
+  gap: 16px;
+}
+
+.recipeForm .panelHeader {
+  align-items: flex-start;
+}
+
+.recipeForm .panelHeader p {
+  margin-top: 5px;
+}
+
+.privacyNotice {
+  align-items: flex-start;
+  background: #eef7f2;
+  border: 1px solid #c8dfd5;
+  border-radius: 8px;
+  color: var(--accent-dark);
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.privacyNotice svg {
+  flex: 0 0 auto;
+}
+
+.privacyNotice p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.recipeContext {
+  align-items: center;
+  background: #f7f9f5;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.recipeContext span {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: right;
+}
+
+.recipeTextarea {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  font: inherit;
+  min-height: 90px;
+  padding: 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.recipeChecks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+}
+
+.recipeChecks label {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 7px;
+}
+
+.recipeChecks input {
+  flex: 0 0 auto;
+  min-height: auto;
+}
+
+.recipeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.promptPreview pre {
+  background: #f7f9f5;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 16px 0 0;
+  max-height: 440px;
+  overflow: auto;
+  padding: 14px;
+  white-space: pre-wrap;
+}
+
+.emptyRecipeState {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
+
+.emptyRecipeState > div {
+  flex: 1;
+}
+
+.emptyRecipeState p {
+  margin-top: 5px;
+}
+
 .workoutWeek {
   display: grid;
   gap: 12px;
@@ -1849,6 +1964,30 @@ button:disabled {
 }
 
 @media (max-width: 760px) {
+  .recipeContext {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .recipeContext span {
+    text-align: left;
+  }
+
+  .recipeActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .recipeActions button:last-child {
+    grid-column: 1 / 3;
+  }
+
+  .emptyRecipeState {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
   .setRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

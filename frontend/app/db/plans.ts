@@ -351,6 +351,22 @@ export async function getNutritionPlans(limit = 3): Promise<StoredNutritionPlan[
   return plans;
 }
 
+export async function getActiveNutritionPlan(): Promise<StoredNutritionPlan | null> {
+  requireAndroid();
+  const db = await getDb();
+  const { values } = await db.query(
+    "SELECT * FROM nutrition_plans WHERE is_active=1 AND archived_at IS NULL ORDER BY activated_at DESC, id DESC LIMIT 1"
+  );
+  const row = values?.[0];
+  if (!row) return null;
+  const { values: dayRows } = await db.query(
+    `SELECT weekday, day_kind, calories, protein_g, carbs_g, fat_g, fiber_g
+     FROM nutrition_plan_days WHERE plan_id=? ORDER BY weekday`,
+    [row.id]
+  );
+  return rowToPlan(row, (dayRows ?? []) as NutritionPlanDay[]);
+}
+
 export async function restoreNutritionPlan(planId: number): Promise<void> {
   requireAndroid();
   const db = await getDb();
