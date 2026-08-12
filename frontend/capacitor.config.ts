@@ -1,8 +1,10 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
+const isDevelopment = process.env.FITNESS_COMPANION_CHANNEL === "development";
+
 const config: CapacitorConfig = {
-  appId: "dev.pranav.fitnesscompanion",
-  appName: "Fitness Companion",
+  appId: isDevelopment ? "dev.pranav.fitnesscompanion.dev" : "dev.pranav.fitnesscompanion",
+  appName: isDevelopment ? "Fitness Companion Dev" : "Fitness Companion",
   webDir: "out",
   server: { androidScheme: "https" },
   plugins: {

@@ -11,6 +11,13 @@ This file is the living scope record for the Android private alpha. Update it wh
 - Online AI features are optional and must never block the offline workflow.
 - Recalibration must show what changed, the evidence used, why it changed, confidence, and an undo path.
 - Publishing and app-store preparation are out of scope; this is a private sideloaded app.
+- Stable releases and next-phase development use separate Git branches, Android application IDs, and on-device sandboxes.
+
+## Release channels
+
+- Stable: `stable` branch, `dev.pranav.fitnesscompanion`, current release `v0.1.1-alpha`.
+- Development: `development` branch, `dev.pranav.fitnesscompanion.dev`, visibly labeled `Fitness Companion Dev`.
+- Generated APKs are kept locally in `releases/`; see `docs/BUILD_CHANNELS.md`.
 
 ## Current sprint: private alpha foundation
 

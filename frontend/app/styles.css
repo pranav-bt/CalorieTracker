@@ -58,6 +58,17 @@ select {
   min-height: 44px;
 }
 
+.buildChannelBadge {
+  background: #f0b84f;
+  border-radius: 999px;
+  color: #4c3507;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-left: auto;
+  padding: 3px 6px;
+}
+
 .sideNav nav {
   display: grid;
   gap: 6px;

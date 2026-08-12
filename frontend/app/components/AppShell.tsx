@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { LoveNotePopup } from "./LoveNotePopup";
 import { getLoveNote } from "../db";
+import { APP_DISPLAY_NAME, IS_DEVELOPMENT_BUILD } from "../appConfig";
 
 const navItems = [
   { href: "/", label: "Home", shortLabel: "Home", icon: Home },
@@ -40,7 +41,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="sideNav">
         <div className="brand">
           <BarChart3 size={22} />
-          <span>Fitness Companion</span>
+          <span>{APP_DISPLAY_NAME}</span>
+          {IS_DEVELOPMENT_BUILD && <small className="buildChannelBadge">DEV</small>}
         </div>
         <nav>
           {navItems.map((item) => {

@@ -16,6 +16,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .tools/
+/releases/*.apk
+/releases/*.sha256
 
 # Environment
 .env

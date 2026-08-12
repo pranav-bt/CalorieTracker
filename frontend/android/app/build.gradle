@@ -3,6 +3,7 @@ apply plugin: 'com.android.application'
 android {
     namespace = "dev.pranav.fitnesscompanion"
     compileSdk = rootProject.ext.compileSdkVersion
+    flavorDimensions += "channel"
     defaultConfig {
         applicationId "dev.pranav.fitnesscompanion"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -14,6 +15,20 @@ android {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    productFlavors {
+        stable {
+            dimension "channel"
+        }
+        dev {
+            dimension "channel"
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+            resValue "string", "app_name", "Fitness Companion Dev"
+            resValue "string", "title_activity_main", "Fitness Companion Dev"
+            resValue "string", "package_name", "dev.pranav.fitnesscompanion.dev"
+            resValue "string", "custom_url_scheme", "dev.pranav.fitnesscompanion.dev"
         }
     }
     buildTypes {
