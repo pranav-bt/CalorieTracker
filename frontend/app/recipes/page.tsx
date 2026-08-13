@@ -4,7 +4,8 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
-import { ChefHat, Clipboard, PackageOpen, Share2, ShieldCheck } from "lucide-react";
+import { ChefHat, Clipboard, PackageOpen, Share2, ShieldCheck, X } from "lucide-react";
+import { RecipeNutritionButton } from "../components/RecipeNutritionCalculator";
 import { getInventoryItems } from "../db/inventory";
 import { getActiveNutritionPlan, getUserProfile } from "../db/plans";
 import {
@@ -15,7 +16,7 @@ import {
   type RecipePreferences,
   type RecipePromptResult,
 } from "../domain/recipePrompt";
-import type { InventoryItem, NutritionTarget } from "../types";
+import type { InventoryItem, MealSummary, NutritionTarget } from "../types";
 
 const STORAGE_KEY = "fitness-companion.recipe-preferences.v1";
 
@@ -61,6 +62,7 @@ export default function RecipesPage() {
   const [isSharing, setIsSharing] = useState(false);
   const [preview, setPreview] = useState<RecipePromptResult | null>(null);
   const [message, setMessage] = useState("");
+  const [mealMessage, setMealMessage] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -103,6 +105,10 @@ export default function RecipesPage() {
     setPreview(null);
     setMessage("");
     setError("");
+  }
+
+  function recipeCommitted(meal: MealSummary) {
+    setMealMessage(`Added ${meal.total_calories} kcal · P ${meal.total_protein_g}g · C ${meal.total_carbs_g}g · F ${meal.total_fat_g}g to today.`);
   }
 
   function createPrompt(): RecipePromptResult {
@@ -181,8 +187,10 @@ export default function RecipesPage() {
     <section className="pageStack">
       <div className="pageHeader">
         <div><p className="eyebrow">Optional AI handoff</p><h1>Recipes</h1></div>
-        <Link className="textButton secondaryButton" href="/inventory"><PackageOpen size={17} />Edit pantry</Link>
+        <div className="pageHeaderRight"><RecipeNutritionButton onCommitted={recipeCommitted} /><Link className="textButton secondaryButton" href="/inventory"><PackageOpen size={17} />Edit pantry</Link></div>
       </div>
+
+      {mealMessage && <div className="recipeLoggedNotice"><strong>Recipe committed</strong><span>{mealMessage}</span><button aria-label="Dismiss recipe committed message" className="iconButton" onClick={() => setMealMessage("")} type="button"><X size={16} /></button></div>}
 
       <aside className="privacyNotice">
         <ShieldCheck size={20} />
