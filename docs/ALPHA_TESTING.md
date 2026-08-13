@@ -26,6 +26,8 @@ Installing a newer APK with the same debug signature should retain local data. U
 - [ ] Share the recipe prompt to ChatGPT or Claude; cancel the share sheet once and confirm no app data changes, then complete a share and review the received pantry context.
 - [ ] Open **Check recipe calories**, select several saved foods and quantities, and verify calories plus protein, carbs, fat, and fiber update correctly.
 - [ ] Exit the recipe calculator and confirm nothing was logged; reopen it, commit the recipe, and confirm all ingredients appear as one meal in today&apos;s totals.
+- [ ] In the recipe calculator choose **Today&apos;s preplanned routine**, confirm the before-recipe remainder matches Home, and confirm the after-recipe preview shows amounts left or over for calories and every planned macro.
+- [ ] On Home, confirm each macro card shows the amount left (or over), plus logged and target values.
 - [ ] Generate a workout plan, log sets and recovery/pain data, then run workout recalibration.
 - [ ] Confirm workout creation/logging has no transaction error; restore and discard plans from workout history.
 - [ ] Export a JSON backup from History and save it somewhere outside the app.

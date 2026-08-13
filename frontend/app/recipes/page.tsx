@@ -6,8 +6,10 @@ import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import { ChefHat, Clipboard, PackageOpen, Share2, ShieldCheck, X } from "lucide-react";
 import { RecipeNutritionButton } from "../components/RecipeNutritionCalculator";
+import { getDailyMacroSummary, getDailySummary } from "../db";
 import { getInventoryItems } from "../db/inventory";
-import { getActiveNutritionPlan, getUserProfile } from "../db/plans";
+import { getUserProfile } from "../db/plans";
+import { remainingNutrition } from "../domain/recipeNutrition";
 import {
   buildRecipePrompt,
   splitRecipeList,
@@ -38,7 +40,7 @@ type FormState = {
 
 const INITIAL_FORM: FormState = {
   servings: "2",
-  mealType: "dinner",
+  mealType: "routine_remaining",
   maxTotalMinutes: "30",
   cuisine: "",
   dietaryPreferences: "",
@@ -55,7 +57,8 @@ const INITIAL_FORM: FormState = {
 export default function RecipesPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [profileDietaryPreferences, setProfileDietaryPreferences] = useState<string[]>([]);
-  const [dailyTarget, setDailyTarget] = useState<NutritionTarget | null>(null);
+  const [remainingTarget, setRemainingTarget] = useState<NutritionTarget | null>(null);
+  const [hasMacroTarget, setHasMacroTarget] = useState(false);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [preferencesReady, setPreferencesReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,18 +77,30 @@ export default function RecipesPage() {
     }
     setPreferencesReady(true);
 
-    Promise.all([getInventoryItems(), getUserProfile(), getActiveNutritionPlan()])
-      .then(([items, profile, activePlan]) => {
-        setInventory(items);
-        setProfileDietaryPreferences(profile?.dietary_preferences ?? []);
-        if (activePlan) {
-          const mondayFirstWeekday = (new Date().getDay() + 6) % 7;
-          setDailyTarget(activePlan.days.find((day) => day.weekday === mondayFirstWeekday) ?? activePlan);
-        }
-      })
+    loadRecipeContext()
       .catch((caught) => setError(caught instanceof Error ? caught.message : "Could not load recipe context."))
       .finally(() => setIsLoading(false));
   }, []);
+
+  async function loadRecipeContext() {
+    const [items, profile, summary, macros] = await Promise.all([
+      getInventoryItems(), getUserProfile(), getDailySummary(), getDailyMacroSummary(),
+    ]);
+    setInventory(items);
+    setProfileDietaryPreferences(profile?.dietary_preferences ?? []);
+    const remaining = remainingNutrition(
+      { calories: summary.adjusted_goal, ...macros.target },
+      { calories: summary.consumed, ...macros.consumed }
+    );
+    setRemainingTarget({
+      calories: Math.max(0, remaining.calories),
+      protein_g: Math.max(0, remaining.protein_g),
+      carbs_g: Math.max(0, remaining.carbs_g),
+      fat_g: Math.max(0, remaining.fat_g),
+      fiber_g: Math.max(0, remaining.fiber_g),
+    });
+    setHasMacroTarget(macros.plan_id !== null);
+  }
 
   useEffect(() => {
     if (!preferencesReady) return;
@@ -109,6 +124,7 @@ export default function RecipesPage() {
 
   function recipeCommitted(meal: MealSummary) {
     setMealMessage(`Added ${meal.total_calories} kcal · P ${meal.total_protein_g}g · C ${meal.total_carbs_g}g · F ${meal.total_fat_g}g to today.`);
+    loadRecipeContext().catch(() => setError("Recipe was logged, but the remaining target could not be refreshed."));
   }
 
   function createPrompt(): RecipePromptResult {
@@ -140,7 +156,7 @@ export default function RecipesPage() {
       allowBasicStaples: form.allowBasicStaples,
       additionalNotes: form.additionalNotes,
     };
-    return buildRecipePrompt({ inventory, preferences, profileDietaryPreferences, dailyTarget });
+    return buildRecipePrompt({ inventory, preferences, profileDietaryPreferences, remainingTarget, hasMacroTarget });
   }
 
   function showPreview(event: FormEvent) {
@@ -201,11 +217,11 @@ export default function RecipesPage() {
         <div className="panelHeader"><div><h2>What would you like?</h2><p className="muted">Preferences are remembered only in this app&apos;s local storage.</p></div><ChefHat size={20} /></div>
         <div className="recipeContext">
           <strong>{isLoading ? "Loading pantry…" : `${usableCount} usable pantry item${usableCount === 1 ? "" : "s"}`}</strong>
-          <span>{dailyTarget ? "Today’s nutrition plan will be included as context." : "No active nutrition plan; the assistant will not invent one."}</span>
+          <span>{remainingTarget ? `${remainingTarget.calories} kcal still available today${hasMacroTarget ? "; remaining macros included" : "; no macro plan yet"}.` : "No current target; the assistant will not invent one."}</span>
         </div>
         <div className="profileGrid">
           <Field label="Servings"><input min="1" max="20" required type="number" value={form.servings} onChange={(event) => update("servings", event.target.value)} /></Field>
-          <Field label="Meal"><select value={form.mealType} onChange={(event) => update("mealType", event.target.value as RecipeMealType)}><option value="any">Any</option><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option></select></Field>
+          <Field label="Meal"><select value={form.mealType} onChange={(event) => update("mealType", event.target.value as RecipeMealType)}><option value="routine_remaining">Today&apos;s remaining routine target</option><option value="any">Any</option><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option></select></Field>
           <Field label="Maximum total minutes"><input min="5" max="360" placeholder="No limit" type="number" value={form.maxTotalMinutes} onChange={(event) => update("maxTotalMinutes", event.target.value)} /></Field>
           <Field label="Nutrition emphasis"><select value={form.nutritionFocus} onChange={(event) => update("nutritionFocus", event.target.value as RecipeNutritionFocus)}><option value="balanced">Balanced</option><option value="high_protein">High protein</option><option value="high_fiber">High fiber</option><option value="lower_calorie">Lower calorie</option><option value="none">No preference</option></select></Field>
           <Field label="Cuisine"><input placeholder="e.g. Indian, Italian" value={form.cuisine} onChange={(event) => update("cuisine", event.target.value)} /></Field>

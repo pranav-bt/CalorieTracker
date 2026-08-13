@@ -1,15 +1,19 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { getFoods, logMeal } from "../db";
+import { getDailyMacroSummary, getDailySummary, getFoods, logMeal } from "../db";
 import { RecipeNutritionCalculator } from "./RecipeNutritionCalculator";
 import type { Food, MealSummary } from "../types";
 
 jest.mock("../db", () => ({
   getFoods: jest.fn(),
+  getDailySummary: jest.fn(),
+  getDailyMacroSummary: jest.fn(),
   logMeal: jest.fn(),
 }));
 
 const mockedGetFoods = jest.mocked(getFoods);
+const mockedGetDailySummary = jest.mocked(getDailySummary);
+const mockedGetDailyMacroSummary = jest.mocked(getDailyMacroSummary);
 const mockedLogMeal = jest.mocked(logMeal);
 
 const foods: Food[] = [
@@ -35,6 +39,17 @@ const loggedMeal: MealSummary = {
 describe("RecipeNutritionCalculator", () => {
   beforeEach(() => {
     mockedGetFoods.mockResolvedValue(foods);
+    mockedGetDailySummary.mockResolvedValue({
+      adjusted_goal: 2000,
+      consumed: 800,
+      target_source: "plan",
+      plan_day_kind: "workout",
+    } as Awaited<ReturnType<typeof getDailySummary>>);
+    mockedGetDailyMacroSummary.mockResolvedValue({
+      consumed: { protein_g: 60, carbs_g: 80, fat_g: 25, fiber_g: 10 },
+      target: { protein_g: 150, carbs_g: 220, fat_g: 65, fiber_g: 30 },
+      plan_id: 4,
+    });
     mockedLogMeal.mockResolvedValue(loggedMeal);
   });
 
@@ -51,6 +66,9 @@ describe("RecipeNutritionCalculator", () => {
     await user.type(screen.getByLabelText("Recipe quantity 2"), "200");
 
     expect(screen.getByText("425 kcal")).toBeInTheDocument();
+    expect(screen.getByText("1200 kcal left")).toBeInTheDocument();
+    expect(screen.getByText("After recipe: 775 kcal left")).toBeInTheDocument();
+    expect(screen.getByText("After recipe: 53.6 g left")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /commit to today/i }));
 
     await waitFor(() => expect(mockedLogMeal).toHaveBeenCalledWith([

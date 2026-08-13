@@ -18,6 +18,23 @@ export type RecipeNutritionEstimate = Macros & {
   ingredients: CalculatedRecipeIngredient[];
 };
 
+export type NutritionTotals = Macros & { calories: number };
+
+export function remainingNutrition(
+  target: NutritionTotals,
+  consumed: NutritionTotals,
+  addition?: NutritionTotals
+): NutritionTotals {
+  const added = addition ?? { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 };
+  return {
+    calories: Math.round(target.calories - consumed.calories - added.calories),
+    protein_g: roundMacro(target.protein_g - consumed.protein_g - added.protein_g),
+    carbs_g: roundMacro(target.carbs_g - consumed.carbs_g - added.carbs_g),
+    fat_g: roundMacro(target.fat_g - consumed.fat_g - added.fat_g),
+    fiber_g: roundMacro(target.fiber_g - consumed.fiber_g - added.fiber_g),
+  };
+}
+
 export function calculateRecipeNutrition(
   foods: Food[],
   inputs: RecipeIngredientInput[]

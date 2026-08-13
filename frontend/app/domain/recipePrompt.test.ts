@@ -41,7 +41,7 @@ describe("buildRecipePrompt", () => {
       ],
       preferences,
       profileDietaryPreferences: ["gluten free", "High Protein"],
-      dailyTarget: { calories: 2100, protein_g: 150, carbs_g: 220, fat_g: 65, fiber_g: 30 },
+      remainingTarget: { calories: 1200, protein_g: 90, carbs_g: 140, fat_g: 40, fiber_g: 20 },
       today: "2026-08-11",
     });
 
@@ -49,8 +49,22 @@ describe("buildRecipePrompt", () => {
     expect(result.prompt).toContain("Spinach: 200 g (fridge; expires 2026-08-13; prioritize using soon)");
     expect(result.prompt).toContain("Dietary preferences: gluten free, High Protein");
     expect(result.prompt).toContain("Avoid or allergy list: peanuts");
-    expect(result.prompt).toContain("2100 kcal; 150 g protein");
+    expect(result.prompt).toContain("Nutrition still remaining today after food already logged");
+    expect(result.prompt).toContain("1200 kcal; 90 g protein");
     expect(result.prompt).toContain("never exceed listed quantities");
+  });
+
+  it("labels the remaining-routine meal option and avoids inventing macro targets", () => {
+    const result = buildRecipePrompt({
+      inventory: [item({ name: "rice" })],
+      preferences: { ...preferences, mealType: "routine_remaining" },
+      remainingTarget: { calories: 750, protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 },
+      hasMacroTarget: false,
+      today: "2026-08-11",
+    });
+
+    expect(result.prompt).toContain("Meal: fit today's remaining routine target");
+    expect(result.prompt).toContain("750 kcal; macro targets are unavailable");
   });
 
   it("excludes expired and zero-quantity entries", () => {

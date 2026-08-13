@@ -624,6 +624,10 @@ button:disabled {
   gap: 10px;
 }
 
+.recipeGoalChoice {
+  max-width: 430px;
+}
+
 .recipeIngredientRow {
   align-items: end;
   border-bottom: 1px solid var(--line);
@@ -685,6 +689,66 @@ button:disabled {
 
 .recipeEstimateNote {
   font-size: 12px;
+}
+
+.recipeGoalComparison {
+  background: #fbfcfa;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.recipeGoalComparison h3 {
+  margin: 0;
+}
+
+.recipeGoalComparison .panelHeader p {
+  margin-top: 4px;
+}
+
+.goalComparisonGrid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.goalComparisonGrid > div {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 10px;
+}
+
+.goalComparisonGrid span,
+.goalComparisonGrid strong,
+.goalComparisonGrid small {
+  display: block;
+}
+
+.goalComparisonGrid span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.goalComparisonGrid strong {
+  font-size: 15px;
+  margin-top: 5px;
+}
+
+.goalComparisonGrid small {
+  color: var(--accent-dark);
+  line-height: 1.3;
+  margin-top: 6px;
+}
+
+.goalComparisonGrid .noMacroGoal {
+  align-self: center;
+  grid-column: 2 / 6;
 }
 
 .modalActions {
@@ -2125,6 +2189,14 @@ button:disabled {
   }
 
   .recipeNutritionTotal div:first-child {
+    grid-column: 1 / 3;
+  }
+
+  .goalComparisonGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .goalComparisonGrid .noMacroGoal {
     grid-column: 1 / 3;
   }
 

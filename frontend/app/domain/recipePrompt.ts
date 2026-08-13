@@ -1,6 +1,6 @@
 import type { InventoryItem, NutritionTarget } from "../types";
 
-export type RecipeMealType = "breakfast" | "lunch" | "dinner" | "snack" | "any";
+export type RecipeMealType = "routine_remaining" | "breakfast" | "lunch" | "dinner" | "snack" | "any";
 export type RecipeNutritionFocus = "balanced" | "high_protein" | "high_fiber" | "lower_calorie" | "none";
 
 export type RecipePreferences = {
@@ -23,7 +23,8 @@ export type RecipePromptInput = {
   inventory: InventoryItem[];
   preferences: RecipePreferences;
   profileDietaryPreferences?: string[];
-  dailyTarget?: NutritionTarget | null;
+  remainingTarget?: NutritionTarget | null;
+  hasMacroTarget?: boolean;
   today?: string;
 };
 
@@ -78,7 +79,7 @@ export function buildRecipePrompt(input: RecipePromptInput): RecipePromptResult 
 
   const constraintLines = [
     `- Servings: ${clampWhole(preferences.servings, 1, 20)}`,
-    `- Meal: ${preferences.mealType}`,
+    `- Meal: ${preferences.mealType === "routine_remaining" ? "fit today's remaining routine target" : preferences.mealType}`,
     `- Nutrition emphasis: ${NUTRITION_LABELS[preferences.nutritionFocus]}`,
     preferences.maxTotalMinutes
       ? `- Maximum total time: ${clampWhole(preferences.maxTotalMinutes, 5, 360)} minutes`
@@ -95,12 +96,14 @@ export function buildRecipePrompt(input: RecipePromptInput): RecipePromptResult 
     `- Additional notes: ${preferences.additionalNotes.trim() || "none"}`,
   ];
 
-  const dailyTargetLines = input.dailyTarget
+  const dailyTargetLines = input.remainingTarget
     ? [
-        "Daily nutrition context (this is a whole-day target, not a per-meal requirement):",
-        `- ${Math.round(input.dailyTarget.calories)} kcal; ${roundMacro(input.dailyTarget.protein_g)} g protein; ${roundMacro(input.dailyTarget.carbs_g)} g carbs; ${roundMacro(input.dailyTarget.fat_g)} g fat; ${roundMacro(input.dailyTarget.fiber_g)} g fiber`,
+        "Nutrition still remaining today after food already logged:",
+        input.hasMacroTarget === false
+          ? `- ${Math.round(input.remainingTarget.calories)} kcal; macro targets are unavailable because no active macro plan exists`
+          : `- ${Math.round(input.remainingTarget.calories)} kcal; ${roundMacro(input.remainingTarget.protein_g)} g protein; ${roundMacro(input.remainingTarget.carbs_g)} g carbs; ${roundMacro(input.remainingTarget.fat_g)} g fat; ${roundMacro(input.remainingTarget.fiber_g)} g fiber`,
       ]
-    : ["Daily nutrition context: no active plan is available, so do not invent a daily target."];
+    : ["Remaining nutrition context: no current calorie target is available, so do not invent one."];
 
   const excludedLine = excludedExpiredNames.length
     ? `Expired entries were deliberately excluded and must not be used: ${excludedExpiredNames.map(displayName).join(", ")}.`

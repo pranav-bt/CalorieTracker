@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Calculator, Plus, Save, Trash2, X } from "lucide-react";
-import { getFoods, logMeal } from "../db";
-import { calculateRecipeNutrition } from "../domain/recipeNutrition";
-import type { Food, MealSummary } from "../types";
+import { getDailyMacroSummary, getDailySummary, getFoods, logMeal } from "../db";
+import { calculateRecipeNutrition, remainingNutrition, type NutritionTotals } from "../domain/recipeNutrition";
+import type { DailySummary, Food, MealSummary } from "../types";
 
 type IngredientRow = {
   key: number;
@@ -18,10 +18,20 @@ type Props = {
   onCommitted: (meal: MealSummary) => void;
 };
 
+type GoalContext = {
+  target: NutritionTotals;
+  consumed: NutritionTotals;
+  hasMacroTarget: boolean;
+  source: DailySummary["target_source"];
+  dayKind: DailySummary["plan_day_kind"];
+};
+
 export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Props) {
   const nextKey = useRef(2);
   const [foods, setFoods] = useState<Food[]>([]);
   const [rows, setRows] = useState<IngredientRow[]>([{ key: 1, foodId: "", quantity: "" }]);
+  const [goalContext, setGoalContext] = useState<GoalContext | null>(null);
+  const [compareToGoal, setCompareToGoal] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -30,8 +40,17 @@ export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Prop
     if (!isOpen) return;
     setIsLoading(true);
     setError("");
-    getFoods()
-      .then(setFoods)
+    Promise.all([getFoods(), getDailySummary(), getDailyMacroSummary()])
+      .then(([knownFoods, summary, macros]) => {
+        setFoods(knownFoods);
+        setGoalContext({
+          target: { calories: summary.adjusted_goal, ...macros.target },
+          consumed: { calories: summary.consumed, ...macros.consumed },
+          hasMacroTarget: macros.plan_id !== null,
+          source: summary.target_source,
+          dayKind: summary.plan_day_kind,
+        });
+      })
       .catch((caught) => setError(caught instanceof Error ? caught.message : "Could not load the food database."))
       .finally(() => setIsLoading(false));
   }, [isOpen]);
@@ -58,6 +77,15 @@ export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Prop
       return null;
     }
   }, [foods, rows]);
+
+  const remainingBefore = useMemo(
+    () => goalContext ? remainingNutrition(goalContext.target, goalContext.consumed) : null,
+    [goalContext]
+  );
+  const remainingAfter = useMemo(
+    () => goalContext && estimate ? remainingNutrition(goalContext.target, goalContext.consumed, estimate) : null,
+    [goalContext, estimate]
+  );
 
   if (!isOpen) return null;
 
@@ -130,6 +158,14 @@ export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Prop
         </div>
         <p className="muted">Choose foods from your database and enter the amount used in the whole recipe. Nothing is logged until you commit.</p>
 
+        <label className="stackedField recipeGoalChoice">
+          <span>Use this recipe for</span>
+          <select aria-label="Recipe goal comparison" value={compareToGoal ? "routine" : "calculate"} onChange={(event) => setCompareToGoal(event.target.value === "routine")}>
+            <option value="routine">Today&apos;s preplanned routine — fit what remains</option>
+            <option value="calculate">Nutrition estimate only</option>
+          </select>
+        </label>
+
         {isLoading ? <p className="muted">Loading foods…</p> : foods.length ? (
           <div className="recipeIngredientRows">
             {rows.map((row, index) => {
@@ -164,6 +200,23 @@ export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Prop
           <div><span>Fat</span><strong>{estimate?.fat_g ?? 0} g</strong></div>
           <div><span>Fiber</span><strong>{estimate?.fiber_g ?? 0} g</strong></div>
         </section>
+        {compareToGoal && goalContext && remainingBefore && (
+          <section className="recipeGoalComparison">
+            <div className="panelHeader">
+              <div><h3>What is left today</h3><p className="muted">{goalContext.source === "plan" ? `${formatDayKind(goalContext.dayKind)} routine target` : "Manual calorie target"}, after food already logged.</p></div>
+            </div>
+            <div className="goalComparisonGrid">
+              <GoalGap label="Calories" before={remainingBefore.calories} after={remainingAfter?.calories ?? null} unit="kcal" />
+              {goalContext.hasMacroTarget ? <>
+                <GoalGap label="Protein" before={remainingBefore.protein_g} after={remainingAfter?.protein_g ?? null} unit="g" />
+                <GoalGap label="Carbs" before={remainingBefore.carbs_g} after={remainingAfter?.carbs_g ?? null} unit="g" />
+                <GoalGap label="Fat" before={remainingBefore.fat_g} after={remainingAfter?.fat_g ?? null} unit="g" />
+                <GoalGap label="Fiber" before={remainingBefore.fiber_g} after={remainingAfter?.fiber_g ?? null} unit="g" />
+              </> : <p className="muted noMacroGoal">Create a macro plan to compare protein, carbs, fat, and fiber. Calories still use your current manual goal.</p>}
+            </div>
+            <p className="muted recipeEstimateNote">“After recipe” is a preview only. It changes today&apos;s totals when you commit.</p>
+          </section>
+        )}
         <p className="muted recipeEstimateNote">Estimates use the calorie and macro references currently saved in your local food database.</p>
         {error && <p className="error">{error}</p>}
         <div className="modalActions">
@@ -187,4 +240,19 @@ export function RecipeNutritionButton({ onCommitted }: { onCommitted: (meal: Mea
 
 function displayName(value: string): string {
   return value.replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function GoalGap({ label, before, after, unit }: { label: string; before: number; after: number | null; unit: string }) {
+  return <div><span>{label}</span><strong>{formatGap(before, unit)}</strong><small>{after === null ? "Add ingredients to preview" : `After recipe: ${formatGap(after, unit)}`}</small></div>;
+}
+
+function formatGap(value: number, unit: string): string {
+  const rounded = Math.round(value * 10) / 10;
+  if (rounded === 0) return "Goal met";
+  return rounded > 0 ? `${rounded} ${unit} left` : `${Math.abs(rounded)} ${unit} over`;
+}
+
+function formatDayKind(dayKind: DailySummary["plan_day_kind"]): string {
+  if (!dayKind) return "Active daily";
+  return dayKind.replace("_", " + ").replace(/^\w/, (character) => character.toUpperCase());
 }

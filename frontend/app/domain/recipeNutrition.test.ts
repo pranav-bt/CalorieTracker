@@ -1,4 +1,4 @@
-import { calculateRecipeNutrition } from "./recipeNutrition";
+import { calculateRecipeNutrition, remainingNutrition } from "./recipeNutrition";
 import type { Food } from "../types";
 
 const foods: Food[] = [
@@ -51,5 +51,23 @@ describe("calculateRecipeNutrition", () => {
       { foodId: 1, quantity: 50 },
     ])).toThrow("selected more than once");
     expect(() => calculateRecipeNutrition(foods, [{ foodId: 1, quantity: 0 }])).toThrow("greater than zero");
+  });
+});
+
+describe("remainingNutrition", () => {
+  it("shows the signed amount left after consumption and a proposed recipe", () => {
+    expect(remainingNutrition(
+      { calories: 2000, protein_g: 150, carbs_g: 220, fat_g: 65, fiber_g: 30 },
+      { calories: 800, protein_g: 60, carbs_g: 80, fat_g: 25, fiber_g: 10 },
+      { calories: 500, protein_g: 45, carbs_g: 65, fat_g: 20, fiber_g: 8 }
+    )).toEqual({ calories: 700, protein_g: 45, carbs_g: 75, fat_g: 20, fiber_g: 12 });
+  });
+
+  it("keeps negative values so the UI can report an overage", () => {
+    expect(remainingNutrition(
+      { calories: 2000, protein_g: 150, carbs_g: 200, fat_g: 60, fiber_g: 30 },
+      { calories: 1900, protein_g: 140, carbs_g: 190, fat_g: 55, fiber_g: 29 },
+      { calories: 300, protein_g: 20, carbs_g: 20, fat_g: 10, fiber_g: 3 }
+    )).toEqual({ calories: -200, protein_g: -10, carbs_g: -10, fat_g: -5, fiber_g: -2 });
   });
 });

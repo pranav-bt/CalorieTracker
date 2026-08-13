@@ -230,12 +230,14 @@ export default function Home() {
 
 function MacroMetric({ label, consumed, target }: { label: string; consumed: number; target: number }) {
   const percent = target > 0 ? Math.min(100, Math.round((consumed / target) * 100)) : 0;
+  const gap = Math.round((target - consumed) * 10) / 10;
+  const gapLabel = gap > 0 ? `${gap}g left` : gap < 0 ? `${Math.abs(gap)}g over` : "Goal met";
   return (
     <div className="macroMetric">
       <div>
         <span className="metricLabel">{label}</span>
-        <strong>{consumed}g</strong>
-        <small>{target > 0 ? `of ${target}g` : "No target"}</small>
+        <strong>{target > 0 ? gapLabel : `${consumed}g`}</strong>
+        <small>{target > 0 ? `${consumed}g logged · ${target}g target` : "No target"}</small>
       </div>
       <div className="macroTrack" aria-label={`${label}: ${consumed} of ${target} grams`}>
         <span style={{ width: `${percent}%` }} />
