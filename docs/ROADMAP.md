@@ -17,6 +17,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 - Stable: `stable` branch, `dev.pranav.fitnesscompanion`, current release `v0.1.1-alpha`.
 - Development: `development` branch, `dev.pranav.fitnesscompanion.dev`, visibly labeled `Fitness Companion Dev`.
+- Current tagged development checkpoint: `v0.2.0-alpha` (Recipes, local nutrition calculation, and remaining-routine guidance).
 - Generated APKs are kept locally in `releases/`; see `docs/BUILD_CHANNELS.md`.
 
 ## Current sprint: private alpha foundation
