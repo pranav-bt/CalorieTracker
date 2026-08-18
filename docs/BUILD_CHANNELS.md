@@ -6,6 +6,7 @@
 - `development` is the integration branch for the next roadmap phase.
 - `v0.1.1-alpha` permanently identifies the first stable checkpoint at commit `7124b6d`.
 - `v0.2.0-alpha` identifies the first development Recipes checkpoint and its versioned APK.
+- The `development` branch now targets `0.2.1-alpha` (Android version code 4) for the next APK checkpoint.
 - `fitness-companion` is retained as the original feature branch and historical remote branch.
 
 Promote a tested development checkpoint by merging it into `stable`, bumping Android's `versionCode` and `versionName`, building the stable channel, and creating a new annotated version tag.
