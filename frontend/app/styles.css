@@ -691,6 +691,56 @@ button:disabled {
   font-size: 12px;
 }
 
+.inventoryDeductionChoice {
+  background: #f7f9f5;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.inventoryDeductionChoice > label {
+  align-items: center;
+  display: flex;
+  font-weight: 700;
+  gap: 8px;
+}
+
+.inventoryDeductionChoice input {
+  flex: 0 0 auto;
+  min-height: auto;
+}
+
+.inventoryDeductionChoice ul {
+  display: grid;
+  gap: 5px;
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+}
+
+.inventoryDeductionChoice li {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  justify-content: space-between;
+}
+
+.inventoryDeductionChoice li span {
+  color: var(--muted);
+}
+
+.deductionWarning {
+  background: #fff1cf;
+  border-radius: 6px;
+  color: #76520c;
+  display: grid;
+  font-size: 12px;
+  gap: 3px;
+  padding: 9px;
+}
+
 .recipeGoalComparison {
   background: #fbfcfa;
   border: 1px solid var(--line);
@@ -964,6 +1014,41 @@ button:disabled {
   font-size: 11px;
   font-weight: 700;
   padding: 4px 7px;
+}
+
+.dangerPill {
+  background: #fde9e7;
+  border-radius: 999px;
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 7px;
+}
+
+.inventoryReminder {
+  align-items: center;
+  background: #fff8e7;
+  border: 1px solid #ead49d;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.inventoryReminder > svg {
+  color: #8a6111;
+  flex: 0 0 auto;
+}
+
+.inventoryReminder > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.inventoryReminder p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
 }
 
 .quantityStepper,
@@ -2153,6 +2238,20 @@ button:disabled {
 }
 
 @media (max-width: 760px) {
+  .inventoryReminder {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .inventoryReminder .textButton {
+    margin-left: 32px;
+  }
+
+  .inventoryDeductionChoice li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .modalBackdrop {
     align-items: flex-end;
     padding: 0;

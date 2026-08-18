@@ -10,6 +10,7 @@ import {
   getInventoryItems,
   saveInventoryItem,
 } from "../db/inventory";
+import { inventoryExpiryStatus } from "../domain/inventory";
 import type { Food, InventoryItem, Unit } from "../types";
 
 type PantryLocation = InventoryItem["location"];
@@ -112,9 +113,9 @@ export default function InventoryPage() {
         <input aria-label="Search inventory" placeholder="Search ingredient or location" value={query} onChange={(e) => setQuery(e.target.value)} />
         {filtered.length ? <ul className="inventoryList">{filtered.map((item) => {
           const low = item.low_stock_quantity !== null && item.quantity <= item.low_stock_quantity;
-          const expiring = isExpiringSoon(item.expires_on);
+          const expiryStatus = inventoryExpiryStatus(item.expires_on);
           return <li key={item.id}>
-            <div className="inventoryIdentity"><strong>{item.name}</strong><small>{item.location}{item.expires_on ? ` · expires ${item.expires_on}` : ""}</small><div className="inventoryFlags">{low && <span className="warningPill">Low stock</span>}{expiring && <span className="warningPill">Use soon</span>}</div></div>
+            <div className="inventoryIdentity"><strong>{item.name}</strong><small>{item.location}{item.expires_on ? ` · expires ${item.expires_on}` : ""}</small><div className="inventoryFlags">{low && <span className="warningPill">Low stock</span>}{expiryStatus === "expired" && <span className="dangerPill">Expired</span>}{expiryStatus === "today" && <span className="warningPill">Expires today</span>}{expiryStatus === "soon" && <span className="warningPill">Use soon</span>}</div></div>
             <div className="quantityStepper"><button className="iconButton" onClick={() => adjust(item, -1)} title="Decrease" type="button"><Minus size={15} /></button><strong>{item.quantity} {item.unit}</strong><button className="iconButton" onClick={() => adjust(item, 1)} title="Increase" type="button"><Plus size={15} /></button></div>
             <div className="inventoryActions"><button className="iconButton" onClick={() => edit(item)} title="Edit" type="button"><Pencil size={15} /></button><button className="iconButton danger" onClick={() => remove(item.id)} title="Delete" type="button"><Trash2 size={15} /></button></div>
           </li>;
@@ -122,10 +123,4 @@ export default function InventoryPage() {
       </section>
     </section>
   );
-}
-
-function isExpiringSoon(date: string | null): boolean {
-  if (!date) return false;
-  const days = Math.ceil((new Date(`${date}T00:00:00`).getTime() - Date.now()) / 86_400_000);
-  return days <= 3;
 }

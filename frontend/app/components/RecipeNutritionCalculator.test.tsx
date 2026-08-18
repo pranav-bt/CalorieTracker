@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { getDailyMacroSummary, getDailySummary, getFoods, logMeal } from "../db";
+import { applyInventoryDeductions, getInventoryItems } from "../db/inventory";
 import { RecipeNutritionCalculator } from "./RecipeNutritionCalculator";
-import type { Food, MealSummary } from "../types";
+import type { Food, InventoryItem, MealSummary } from "../types";
 
 jest.mock("../db", () => ({
   getFoods: jest.fn(),
@@ -10,15 +11,26 @@ jest.mock("../db", () => ({
   getDailyMacroSummary: jest.fn(),
   logMeal: jest.fn(),
 }));
+jest.mock("../db/inventory", () => ({
+  getInventoryItems: jest.fn(),
+  applyInventoryDeductions: jest.fn(),
+}));
 
 const mockedGetFoods = jest.mocked(getFoods);
 const mockedGetDailySummary = jest.mocked(getDailySummary);
 const mockedGetDailyMacroSummary = jest.mocked(getDailyMacroSummary);
 const mockedLogMeal = jest.mocked(logMeal);
+const mockedGetInventoryItems = jest.mocked(getInventoryItems);
+const mockedApplyInventoryDeductions = jest.mocked(applyInventoryDeductions);
 
 const foods: Food[] = [
   { id: 1, name: "chicken breast", unit: "g", reference_quantity: 100, reference_calories: 165, protein_g: 31, carbs_g: 0, fat_g: 3.6, fiber_g: 0, source: "manual" },
   { id: 2, name: "rice", unit: "g", reference_quantity: 100, reference_calories: 130, protein_g: 2.7, carbs_g: 28, fat_g: 0.3, fiber_g: 0.4, source: "manual" },
+];
+
+const inventory: InventoryItem[] = [
+  { id: 20, food_id: 1, name: "chicken breast", quantity: 300, unit: "g", location: "fridge", expires_on: "2026-08-20", low_stock_quantity: null, updated_at: "2026-08-18" },
+  { id: 21, food_id: 2, name: "rice", quantity: 150, unit: "g", location: "pantry", expires_on: null, low_stock_quantity: null, updated_at: "2026-08-18" },
 ];
 
 const loggedMeal: MealSummary = {
@@ -39,6 +51,8 @@ const loggedMeal: MealSummary = {
 describe("RecipeNutritionCalculator", () => {
   beforeEach(() => {
     mockedGetFoods.mockResolvedValue(foods);
+    mockedGetInventoryItems.mockResolvedValue([]);
+    mockedApplyInventoryDeductions.mockResolvedValue();
     mockedGetDailySummary.mockResolvedValue({
       adjusted_goal: 2000,
       consumed: 800,
@@ -89,5 +103,22 @@ describe("RecipeNutritionCalculator", () => {
 
     expect(mockedLogMeal).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("deducts earliest matching pantry stock only after explicit confirmation", async () => {
+    mockedGetInventoryItems.mockResolvedValue(inventory);
+    const user = userEvent.setup();
+    const onCommitted = jest.fn();
+    render(<RecipeNutritionCalculator isOpen onClose={jest.fn()} onCommitted={onCommitted} />);
+
+    await user.selectOptions(await screen.findByLabelText("Recipe ingredient 1"), "1");
+    expect(screen.getByRole("checkbox", { name: /deduct matching stock/i })).not.toBeChecked();
+    await user.click(screen.getByRole("checkbox", { name: /deduct matching stock/i }));
+    await user.click(screen.getByRole("button", { name: /commit to today/i }));
+
+    await waitFor(() => expect(mockedApplyInventoryDeductions).toHaveBeenCalledWith([
+      expect.objectContaining({ inventoryId: 20, quantity: 100, unit: "g" }),
+    ]));
+    expect(onCommitted).toHaveBeenCalledWith(loggedMeal, expect.stringContaining("Pantry updated"));
   });
 });

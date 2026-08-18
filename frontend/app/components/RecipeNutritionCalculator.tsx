@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Calculator, Plus, Save, Trash2, X } from "lucide-react";
 import { getDailyMacroSummary, getDailySummary, getFoods, logMeal } from "../db";
+import { applyInventoryDeductions, getInventoryItems } from "../db/inventory";
+import { planInventoryDeductions } from "../domain/inventory";
 import { calculateRecipeNutrition, remainingNutrition, type NutritionTotals } from "../domain/recipeNutrition";
-import type { DailySummary, Food, MealSummary } from "../types";
+import type { DailySummary, Food, InventoryItem, MealSummary } from "../types";
 
 type IngredientRow = {
   key: number;
@@ -15,7 +17,7 @@ type IngredientRow = {
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  onCommitted: (meal: MealSummary) => void;
+  onCommitted: (meal: MealSummary, inventoryNote?: string) => void;
 };
 
 type GoalContext = {
@@ -29,9 +31,11 @@ type GoalContext = {
 export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Props) {
   const nextKey = useRef(2);
   const [foods, setFoods] = useState<Food[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [rows, setRows] = useState<IngredientRow[]>([{ key: 1, foodId: "", quantity: "" }]);
   const [goalContext, setGoalContext] = useState<GoalContext | null>(null);
   const [compareToGoal, setCompareToGoal] = useState(true);
+  const [deductInventory, setDeductInventory] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -40,9 +44,10 @@ export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Prop
     if (!isOpen) return;
     setIsLoading(true);
     setError("");
-    Promise.all([getFoods(), getDailySummary(), getDailyMacroSummary()])
-      .then(([knownFoods, summary, macros]) => {
+    Promise.all([getFoods(), getInventoryItems(), getDailySummary(), getDailyMacroSummary()])
+      .then(([knownFoods, pantryItems, summary, macros]) => {
         setFoods(knownFoods);
+        setInventory(pantryItems);
         setGoalContext({
           target: { calories: summary.adjusted_goal, ...macros.target },
           consumed: { calories: summary.consumed, ...macros.consumed },
@@ -86,6 +91,18 @@ export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Prop
     () => goalContext && estimate ? remainingNutrition(goalContext.target, goalContext.consumed, estimate) : null,
     [goalContext, estimate]
   );
+  const deductionPlan = useMemo(
+    () => estimate ? planInventoryDeductions(
+      estimate.ingredients.map((ingredient) => ({
+        foodId: ingredient.foodId,
+        name: ingredient.name,
+        quantity: ingredient.quantity,
+        unit: ingredient.unit,
+      })),
+      inventory
+    ) : null,
+    [estimate, inventory]
+  );
 
   if (!isOpen) return null;
 
@@ -115,6 +132,7 @@ export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Prop
   function reset() {
     nextKey.current = 2;
     setRows([{ key: 1, foodId: "", quantity: "" }]);
+    setDeductInventory(false);
     setError("");
   }
 
@@ -137,9 +155,19 @@ export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Prop
         quantity: ingredient.quantity,
         unit: ingredient.unit,
       })));
+      let inventoryNote: string | undefined;
+      if (deductInventory && deductionPlan?.deductions.length) {
+        try {
+          await applyInventoryDeductions(deductionPlan.deductions);
+          inventoryNote = `Pantry updated: ${deductionPlan.deductions.map((deduction) => `${deduction.quantity} ${deduction.unit} ${displayName(deduction.name)}`).join(", ")}.`;
+        } catch (deductionError) {
+          inventoryNote = `Meal was logged, but pantry stock was not changed: ${deductionError instanceof Error ? deductionError.message : "review inventory before trying a manual adjustment."}`;
+        }
+      }
       reset();
       onClose();
-      onCommitted(meal);
+      if (inventoryNote) onCommitted(meal, inventoryNote);
+      else onCommitted(meal);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not add this recipe to today.");
     } finally {
@@ -200,6 +228,14 @@ export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Prop
           <div><span>Fat</span><strong>{estimate?.fat_g ?? 0} g</strong></div>
           <div><span>Fiber</span><strong>{estimate?.fiber_g ?? 0} g</strong></div>
         </section>
+        {deductionPlan && deductionPlan.totalMatchedIngredients > 0 && (
+          <section className="inventoryDeductionChoice">
+            <label><input checked={deductInventory} type="checkbox" onChange={(event) => setDeductInventory(event.target.checked)} />Deduct matching stock when I commit</label>
+            <p className="muted">Nothing is deducted unless this is checked. Earliest-expiring usable stock is used first.</p>
+            {deductInventory && <ul>{deductionPlan.deductions.map((deduction) => <li key={deduction.inventoryId}><strong>{deduction.quantity} {deduction.unit} {displayName(deduction.name)}</strong><span>{deduction.location}{deduction.expiresOn ? ` · expires ${deduction.expiresOn}` : ""}</span></li>)}</ul>}
+            {deductInventory && deductionPlan.shortages.length > 0 && <div className="deductionWarning"><strong>Partial stock only</strong>{deductionPlan.shortages.map((shortage) => <span key={`${shortage.name}-${shortage.unit}`}>{displayName(shortage.name)}: {shortage.available} of {shortage.requested} {shortage.unit} available</span>)}</div>}
+          </section>
+        )}
         {compareToGoal && goalContext && remainingBefore && (
           <section className="recipeGoalComparison">
             <div className="panelHeader">
@@ -228,7 +264,7 @@ export function RecipeNutritionCalculator({ isOpen, onClose, onCommitted }: Prop
   );
 }
 
-export function RecipeNutritionButton({ onCommitted }: { onCommitted: (meal: MealSummary) => void }) {
+export function RecipeNutritionButton({ onCommitted }: { onCommitted: (meal: MealSummary, inventoryNote?: string) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <>

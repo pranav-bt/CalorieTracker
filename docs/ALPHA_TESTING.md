@@ -22,10 +22,12 @@ Installing a newer APK with the same debug signature should retain local data. U
 - [ ] Discard the active nutrition plan; confirm the previous plan activates, Undo works, and manual calories take over when no plan remains.
 - [ ] Add weight/body measurements and run recalibration; check that the report explains what changed or why no change was made.
 - [ ] Add, edit, and remove an inventory item.
+- [ ] Add one expired item and items expiring today, within three days, and later; confirm Home and Inventory distinguish **Expired**, **Expires today**, and **Use soon** correctly.
 - [ ] Open Recipes, set preferences and an avoid/allergy item, preview the prompt, and confirm expired or zero-stock ingredients are excluded.
 - [ ] Share the recipe prompt to ChatGPT or Claude; cancel the share sheet once and confirm no app data changes, then complete a share and review the received pantry context.
 - [ ] Open **Check recipe calories**, select several saved foods and quantities, and verify calories plus protein, carbs, fat, and fiber update correctly.
 - [ ] Exit the recipe calculator and confirm nothing was logged; reopen it, commit the recipe, and confirm all ingredients appear as one meal in today&apos;s totals.
+- [ ] With matching pantry stock, leave deduction unchecked and commit a recipe; confirm stock is unchanged. Repeat with deduction checked and confirm earliest-expiring usable stock is reduced while expired stock is untouched.
 - [ ] In the recipe calculator choose **Today&apos;s preplanned routine**, confirm the before-recipe remainder matches Home, and confirm the after-recipe preview shows amounts left or over for calories and every planned macro.
 - [ ] On Home, confirm each macro card shows the amount left (or over), plus logged and target values.
 - [ ] Generate a workout plan, log sets and recovery/pain data, then run workout recalibration.

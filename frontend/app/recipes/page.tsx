@@ -122,8 +122,8 @@ export default function RecipesPage() {
     setError("");
   }
 
-  function recipeCommitted(meal: MealSummary) {
-    setMealMessage(`Added ${meal.total_calories} kcal · P ${meal.total_protein_g}g · C ${meal.total_carbs_g}g · F ${meal.total_fat_g}g to today.`);
+  function recipeCommitted(meal: MealSummary, inventoryNote?: string) {
+    setMealMessage(`Added ${meal.total_calories} kcal · P ${meal.total_protein_g}g · C ${meal.total_carbs_g}g · F ${meal.total_fat_g}g to today.${inventoryNote ? ` ${inventoryNote}` : ""}`);
     loadRecipeContext().catch(() => setError("Recipe was logged, but the remaining target could not be refreshed."));
   }
 

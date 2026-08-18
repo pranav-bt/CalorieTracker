@@ -53,7 +53,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 - [x] Connect recipes to today&apos;s remaining routine target and show calorie/macro gaps before and after a proposed recipe.
 - [ ] Optional integrated recipe assistant through a provider-neutral serverless proxy.
 - [ ] AI-assisted workout-plan explanations and revisions, with deterministic validation.
-- [ ] Expiration reminders and optional confirmed inventory deductions.
+- [x] In-app expiration reminders and optional confirmed inventory deductions when committing recipes.
 - [ ] Exercise and body-measurement charts.
 - [ ] Accessibility review for comfortable private use.
 
@@ -89,6 +89,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 - Consumer ChatGPT and Claude subscriptions do not provide third-party API usage. Provider integration remains separately gated.
 - Recipe suggestions currently use an explicit share/copy handoff: the app filters out expired and zero-stock items, shows the exact prompt, and sends nothing until the user acts.
 - Recipe nutrition estimates scale the references stored in the food database. The calculator draft is temporary; committing snapshots all selected ingredients into one meal for today, while exiting writes nothing.
+- Expired pantry stock is never offered for automatic deduction. Confirmed recipe deductions allocate earliest-expiring matching stock first and report partial availability before commit.
 - The current routine preplans day-level nutrition rather than named dishes. Recipe tools expose that plan as **today&apos;s remaining routine target** and subtract meals already logged; named meal scheduling remains separate future scope if needed.
 - The web production build, unit tests, Capacitor sync, and native Gradle debug build pass.
 - Capacitor 8 native plugins require a Java 21 toolchain. A checksum-verified Temurin JDK is kept in the ignored local `.tools` directory for builds.

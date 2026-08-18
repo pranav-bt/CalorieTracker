@@ -1,8 +1,9 @@
 "use client";
 
 import { Capacitor } from "@capacitor/core";
+import type { InventoryDeduction } from "../domain/inventory";
 import type { InventoryItem, Unit } from "../types";
-import { getDb } from "./client";
+import { getDb, inTransaction } from "./client";
 
 export type InventoryDraft = Omit<InventoryItem, "id" | "updated_at">;
 
@@ -83,4 +84,27 @@ export async function deleteInventoryItem(id: number): Promise<void> {
   requireAndroid();
   const db = await getDb();
   await db.run("DELETE FROM inventory_items WHERE id=?", [id]);
+}
+
+export async function applyInventoryDeductions(deductions: InventoryDeduction[]): Promise<void> {
+  requireAndroid();
+  if (!deductions.length) return;
+  const db = await getDb();
+  await inTransaction(db, async () => {
+    for (const deduction of deductions) {
+      if (!Number.isFinite(deduction.quantity) || deduction.quantity <= 0) {
+        throw new Error("Inventory deduction quantities must be greater than zero.");
+      }
+      const { changes } = await db.run(
+        `UPDATE inventory_items
+         SET quantity=ROUND(quantity - ?, 2), updated_at=datetime('now')
+         WHERE id=? AND quantity + 0.0001 >= ?`,
+        [deduction.quantity, deduction.inventoryId, deduction.quantity],
+        false
+      );
+      if (!changes?.changes) {
+        throw new Error(`${deduction.name} inventory changed before it could be deducted. Review the pantry and try again.`);
+      }
+    }
+  });
 }

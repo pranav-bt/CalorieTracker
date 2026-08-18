@@ -6,6 +6,7 @@ import { Activity, ArrowRight, CalendarDays, CheckCircle2, Circle, Flame, Settin
 import { getDailyMacroSummary, getDailySummary, getHistory, completeChallenge as dbCompleteChallenge } from "./db";
 import type { DailyMacroSummary, DailySummary, HistoryDay } from "./types";
 import { QuickMealLogger } from "./components/QuickMealLogger";
+import { InventoryExpiryAlerts } from "./components/InventoryExpiryAlerts";
 
 const EMPTY_MACROS: DailyMacroSummary = {
   consumed: { protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 },
@@ -78,6 +79,8 @@ export default function Home() {
           <p>{summary.greeting}</p>
         </div>
       )}
+
+      <InventoryExpiryAlerts />
 
       <div className="summaryBand">
         <div>
