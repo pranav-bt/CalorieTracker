@@ -18,6 +18,7 @@ yarn-error.log*
 .tools/
 /releases/*.apk
 /releases/*.sha256
+/.release-worktrees/
 
 # Environment
 .env

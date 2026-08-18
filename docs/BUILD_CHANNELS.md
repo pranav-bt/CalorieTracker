@@ -39,3 +39,13 @@ The script refuses to build a channel from the wrong branch. Generated APKs are 
 The current `stable` branch is intentionally pinned to the already-built `v0.1.1-alpha` checkpoint, before this build script was introduced. Its preserved APK is `releases/FitnessCompanion-0.1.1-alpha-stable.apk`; do not rebuild that historical tag.
 
 Development APKs use an increasing Android `versionCode` and a distinct `versionName`. Each tagged checkpoint remains in `releases/` under its versioned filename so later builds do not replace it.
+
+## Open or roll back a checkpoint
+
+Open the exact source for any release beside the active development checkout:
+
+```powershell
+.\scripts\open-release.ps1 v0.2.0-alpha
+```
+
+This creates an ignored, detached worktree under `.release-worktrees/` and does not switch or modify the active branch. The corresponding immutable APK filename and SHA-256 are listed in `releases/README.md`.
