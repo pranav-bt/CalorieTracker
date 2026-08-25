@@ -5,7 +5,7 @@ import { Camera as CameraIcon, Pencil, Save, Search, Trash2, X } from "lucide-re
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
 import { deleteFood, getFoods, updateFood, upsertFood } from "../db";
-import { parseNutritionLabel, type ParsedNutritionLabel } from "../domain/nutritionLabel";
+import { parseNutritionLabel, SUPPORTED_NUTRITION_LABEL_LANGUAGES, type ParsedNutritionLabel } from "../domain/nutritionLabel";
 import { NutritionLabelScanner } from "../plugins/NutritionLabelScanner";
 import type { Food, Unit } from "../types";
 
@@ -183,6 +183,7 @@ export default function FoodsPage() {
             </button>
           </div>
         </div>
+        <p className="muted">Offline label reading supports {SUPPORTED_NUTRITION_LABEL_LANGUAGES.join(", ")}. Always confirm the detected serving and nutrients.</p>
         {scanResult && (
           <div className={`scanReview ${scanResult.confidence}`}>
             <strong>{scanResult.confidence} confidence — confirmation required</strong>

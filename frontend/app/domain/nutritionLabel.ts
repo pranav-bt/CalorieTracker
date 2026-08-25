@@ -13,17 +13,22 @@ export type ParsedNutritionLabel = {
   raw_text: string;
 };
 
+export const SUPPORTED_NUTRITION_LABEL_LANGUAGES = ["English", "Spanish", "French", "German", "Italian", "Portuguese"] as const;
+
 const NUTRIENT_LABELS = {
-  protein_g: [/^protein\b/i],
-  carbs_g: [/^total\s+carbohydrate\b/i, /^carbohydrate\b/i, /^carbs?\b/i],
-  fat_g: [/^total\s+fat\b/i, /^fat\b/i],
-  fiber_g: [/^dietary\s+fib(?:er|re)\b/i, /^fib(?:er|re)\b/i],
+  protein_g: [/^protein\b/i, /^proteinas?\b/i, /^proteines?\b/i, /^eiweiss\b/i],
+  carbs_g: [/^total\s+carbohydrate\b/i, /^carbohydrates?\b/i, /^carbs?\b/i, /^carbohidratos?\b/i, /^carboidratos?\b/i, /^glucides?\b/i, /^kohlenhydrate\b/i, /^hidratos?\s+de\s+carbono\b/i, /^carboidrati\b/i],
+  fat_g: [/^total\s+fat\b/i, /^fat\b/i, /^grasas?(?:\s+totales?)?\b/i, /^matieres?\s+grasses?\b/i, /^lipides?\b/i, /^fett\b/i, /^gorduras?(?:\s+totais?)?\b/i, /^grassi\b/i],
+  fiber_g: [/^dietary\s+fib(?:er|re)\b/i, /^fib(?:er|re)\b/i, /^fibra(?:\s+(?:alimentaria|dietetica|alimentar))?\b/i, /^fibres?(?:\s+alimentaires?)?\b/i, /^ballaststoffe\b/i, /^fibre(?:\s+alimentari)?\b/i],
 } as const;
+
+const CALORIE_LABELS = [/^calories?(?:\s|$)/i, /^calorias?(?:\s|$)/i, /^energy(?:\s|$)/i, /^energie(?:\s|$)/i, /^energia(?:\s|$)/i, /^brennwert(?:\s|$)/i, /^valor\s+energetico(?:\s|$)/i];
+const SERVING_LABEL = /serving\s*size|per\s+serving|tamano\s+de\s+(?:la\s+)?porcion|por\s+porcion|taille\s+de\s+la\s+portion|par\s+portion|portionsgrosse|pro\s+portion|porcao|por\s+porcao|porzione|per\s+porzione/i;
 
 export function parseNutritionLabel(rawText: string): ParsedNutritionLabel {
   const lines = rawText
     .split(/\r?\n/)
-    .map((line) => line.replace(/[|]/g, " ").replace(/\s+/g, " ").trim())
+    .map((line) => normalizeText(line.replace(/[|]/g, " ").replace(/\s+/g, " ").trim()))
     .filter(Boolean);
   if (!lines.length) throw new Error("No text was found. Retake the photo with the label filling the frame.");
 
@@ -62,10 +67,17 @@ export function parseNutritionLabel(rawText: string): ParsedNutritionLabel {
 function findCalories(lines: string[]): number | null {
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
-    if (!/^calories(?:\s|$)/i.test(line) || /from\s+fat/i.test(line)) continue;
-    const sameLine = numbers(line.replace(/^calories/i, ""));
+    const label = CALORIE_LABELS.find((candidate) => candidate.test(line));
+    if (!label || /from\s+fat/i.test(line)) continue;
+    const sameLineText = line.replace(label, "");
+    const sameLineKcal = kcalValue(sameLineText);
+    if (sameLineKcal !== null) return sensibleCalories(sameLineKcal);
+    const sameLine = numbers(sameLineText);
     if (sameLine.length) return sensibleCalories(sameLine[0]);
-    const nextLine = numbers(lines[index + 1] ?? "");
+    const nextLineText = lines[index + 1] ?? "";
+    const nextLineKcal = kcalValue(nextLineText);
+    if (nextLineKcal !== null) return sensibleCalories(nextLineKcal);
+    const nextLine = numbers(nextLineText);
     if (nextLine.length) return sensibleCalories(nextLine[0]);
   }
   return null;
@@ -87,23 +99,23 @@ function findNutrient(lines: string[], labels: readonly RegExp[]): number | null
 }
 
 function findServing(lines: string[]): { quantity: number; unit: Unit; found: boolean } {
-  const servingIndex = lines.findIndex((line) => /serving\s*size|per\s+serving/i.test(line));
+  const servingIndex = lines.findIndex((line) => SERVING_LABEL.test(line));
   if (servingIndex < 0) return { quantity: 1, unit: "piece", found: false };
   const candidate = `${lines[servingIndex]} ${lines[servingIndex + 1] ?? ""}`;
-  const supported = [...candidate.matchAll(/(\d+(?:\.\d+)?)\s*(g|gram(?:s)?|ml|milliliter(?:s)?)/gi)];
+  const supported = [...candidate.matchAll(/(\d+(?:[.,]\d+)?)\s*(g|gram(?:s|os|mes)?|gramm|ml|millilit(?:er|re|ro)(?:s)?)/gi)];
   if (supported.length) {
     const match = supported[supported.length - 1];
     return {
-      quantity: Number(match[1]),
+      quantity: parseNumeric(match[1]),
       unit: match[2].toLowerCase().startsWith("m") ? "ml" : "g",
       found: true,
     };
   }
-  const household = candidate.match(/serving\s*size\s*(\d+(?:\.\d+)?)\s*(slice|piece|bar|container|packet)/i);
+  const household = candidate.match(new RegExp(`(?:${SERVING_LABEL.source})\\s*(\\d+(?:[.,]\\d+)?)\\s*(slice|piece|bar|container|packet|rebanada|pieza|tranche|scheibe|stuck|portion|porcao|fetta|pezzo)`, "i"));
   if (household) {
     return {
-      quantity: Number(household[1]),
-      unit: household[2].toLowerCase() === "slice" ? "slice" : "piece",
+      quantity: parseNumeric(household[1]),
+      unit: /slice|rebanada|tranche|scheibe|fetta/i.test(household[2]) ? "slice" : "piece",
       found: true,
     };
   }
@@ -111,9 +123,22 @@ function findServing(lines: string[]): { quantity: number; unit: Unit; found: bo
 }
 
 function gramValues(text: string): number[] {
-  return [...text.matchAll(/(\d+(?:\.\d+)?)\s*g\b/gi)].map((match) => Number(match[1]));
+  return [...text.matchAll(/(\d+(?:[.,]\d+)?)\s*g\b/gi)].map((match) => parseNumeric(match[1]));
 }
 
 function numbers(text: string): number[] {
-  return [...text.matchAll(/\d+(?:\.\d+)?/g)].map((match) => Number(match[0]));
+  return [...text.matchAll(/\d+(?:[.,]\d+)?/g)].map((match) => parseNumeric(match[0]));
+}
+
+function kcalValue(text: string): number | null {
+  const match = text.match(/(\d+(?:[.,]\d+)?)\s*kcal\b/i);
+  return match ? parseNumeric(match[1]) : null;
+}
+
+function parseNumeric(value: string): number {
+  return Number(value.replace(",", "."));
+}
+
+function normalizeText(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss");
 }

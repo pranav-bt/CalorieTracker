@@ -13,6 +13,7 @@ Installing a newer APK with the same debug signature should retain local data. U
 - [ ] App opens without a storage error and navigation works.
 - [ ] Add a food manually with calories and macros, then edit it.
 - [ ] Scan a nutrition label, deny/allow camera permission as desired, review the detected values, and confirm before saving.
+- [ ] Scan clear English and at least one Spanish, French, German, Italian, or Portuguese label; confirm decimal commas and kJ/kcal labels use the kcal value.
 - [ ] Log a meal from Home and confirm calorie and macro totals update.
 - [ ] Create a profile and nutrition plan; check all seven routine days.
 - [ ] Confirm plan creation succeeds without a transaction error and Today uses the current weekday&apos;s planned calories.
@@ -33,6 +34,8 @@ Installing a newer APK with the same debug signature should retain local data. U
 - [ ] In the recipe calculator choose **Today&apos;s preplanned routine**, confirm the before-recipe remainder matches Home, and confirm the after-recipe preview shows amounts left or over for calories and every planned macro.
 - [ ] On Home, confirm each macro card shows the amount left (or over), plus logged and target values.
 - [ ] Generate a workout plan, log sets and recovery/pain data, then run workout recalibration.
+- [ ] Generate plans with balanced, strength, muscle-building, endurance, hybrid, and mobility styles; confirm the sessions and prescriptions visibly change.
+- [ ] Enter resistance bands as the available equipment and confirm the generated plan uses band exercises.
 - [ ] Log the same strength and cardio exercise twice; confirm their progress charts offer the appropriate load/volume/reps or duration/distance metrics.
 - [ ] Confirm workout creation/logging has no transaction error; restore and discard plans from workout history.
 - [ ] Export a JSON backup from History and save it somewhere outside the app.

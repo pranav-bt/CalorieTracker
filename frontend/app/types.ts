@@ -6,6 +6,7 @@ export type ActivityLevel = "sedentary" | "light" | "moderate" | "very_active";
 export type GoalKind = "maintain" | "fat_loss" | "muscle_gain" | "recomposition" | "performance";
 export type PhysiqueGoal = "leaner" | "fit_defined" | "muscular" | "maintain" | "performance";
 export type CurrentState = "reduce_fat" | "fairly_lean_gain_muscle" | "both_unsure";
+export type WorkoutStyle = "balanced" | "strength" | "hypertrophy" | "endurance" | "hybrid" | "mobility";
 export type PlanSource = "initial" | "manual" | "recalibration" | "restored";
 export type RecalibrationConfidence = "low" | "medium" | "high";
 
@@ -154,6 +155,7 @@ export type UserProfile = {
   workout_days_per_week: number;
   preferred_workout_days: number[];
   workout_session_minutes: number;
+  workout_style: WorkoutStyle;
   flex_days_per_week: number;
   flex_day_weekday: number | null;
   flex_day_calorie_target: number | null;

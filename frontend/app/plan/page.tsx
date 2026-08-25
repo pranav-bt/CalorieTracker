@@ -24,6 +24,7 @@ import type {
   PhysiqueGoal,
   RecalibrationReport,
   UserProfile,
+  WorkoutStyle,
 } from "../types";
 import { phaseImpact, phaseLabel, recommendPhase } from "../domain/goalGuidance";
 import { BodyProgressCharts } from "../components/BodyProgressCharts";
@@ -52,6 +53,7 @@ type FormState = {
   workoutDays: string;
   preferredWorkoutDays: number[];
   sessionMinutes: string;
+  workoutStyle: WorkoutStyle;
   flexDay: boolean;
   flexWeekday: number;
   flexCalories: string;
@@ -82,6 +84,7 @@ const INITIAL_FORM: FormState = {
   workoutDays: "3",
   preferredWorkoutDays: [0, 2, 4],
   sessionMinutes: "45",
+  workoutStyle: "balanced",
   flexDay: false,
   flexWeekday: 5,
   flexCalories: "",
@@ -337,6 +340,16 @@ export default function PlanPage() {
         <div className="profileGrid">
           <Field label="Workout days per week"><NumberInput max="7" min="0" step="1" value={form.workoutDays} onChange={(value) => update("workoutDays", value)} /></Field>
           <Field label="Minutes per session"><NumberInput max="240" min="10" step="5" value={form.sessionMinutes} onChange={(value) => update("sessionMinutes", value)} /></Field>
+          <Field label="Workout style">
+            <select value={form.workoutStyle} onChange={(event) => update("workoutStyle", event.target.value as WorkoutStyle)}>
+              <option value="balanced">Balanced general fitness</option>
+              <option value="strength">Strength</option>
+              <option value="hypertrophy">Muscle building</option>
+              <option value="endurance">Endurance</option>
+              <option value="hybrid">Hybrid / race conditioning</option>
+              <option value="mobility">Mobility and recovery</option>
+            </select>
+          </Field>
         </div>
         <fieldset className="dayPicker">
           <legend>Preferred workout days</legend>
@@ -461,6 +474,7 @@ function formToProfile(form: FormState): UserProfile {
     workout_days_per_week: Number(form.workoutDays),
     preferred_workout_days: form.preferredWorkoutDays,
     workout_session_minutes: Number(form.sessionMinutes),
+    workout_style: form.workoutStyle,
     flex_days_per_week: form.flexDay ? 1 : 0,
     flex_day_weekday: form.flexDay ? form.flexWeekday : null,
     flex_day_calorie_target: form.flexDay ? optionalNumber(form.flexCalories) : null,
@@ -488,6 +502,7 @@ function profileToForm(profile: UserProfile, measurement: import("../types").Bod
     workoutDays: String(profile.workout_days_per_week),
     preferredWorkoutDays: profile.preferred_workout_days,
     sessionMinutes: String(profile.workout_session_minutes),
+    workoutStyle: profile.workout_style,
     flexDay: profile.flex_days_per_week > 0,
     flexWeekday: profile.flex_day_weekday ?? 5,
     flexCalories: profile.flex_day_calorie_target === null ? "" : String(profile.flex_day_calorie_target),

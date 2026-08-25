@@ -12,7 +12,7 @@ The SQLite database is the source of truth for the Android app. Values copied in
 
 ## Profile and recalibration
 
-- `user_profile`: current non-historical preferences and constraints, including an optional exact flex-day calorie target.
+- `user_profile`: current non-historical preferences and constraints, including an optional exact flex-day calorie target and selected workout style.
 - `body_measurements`: time series of weight and optional body measurements.
 - `recalibration_reports`: immutable evidence and change records that link old and new plans.
 

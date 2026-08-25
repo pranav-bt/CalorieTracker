@@ -6,6 +6,7 @@ Run the release gate from `frontend`:
 npm.cmd run test:ci
 npm.cmd run lint
 npm.cmd run build
+npm.cmd audit
 ```
 
 The Jest suite is the headless acceptance layer. It covers:
@@ -13,11 +14,11 @@ The Jest suite is the headless acceptance layer. It covers:
 - calorie and macro calculation, validation boundaries, weekly redistribution, and configurable flex-day targets;
 - fixed versus flexible-weekly carryover behavior;
 - physique-to-phase guidance and nutrition trend recalibration safeguards;
-- nutrition-label parsing and required manual-confirmation data;
+- multilingual Latin-script nutrition-label parsing, decimal commas, kJ/kcal disambiguation, and required manual-confirmation data;
 - immutable recipe estimates, remaining-target calculations, and explicit commit/discard behavior;
 - inventory expiry classification, shortages, and earliest-expiring deductions;
 - transaction commit/rollback behavior, schema migrations, profile persistence, and backup validation;
-- workout generation, completed-set progress aggregation, and chart presentation;
+- equipment-aware workout generation across all selectable styles, completed-set progress aggregation, and chart presentation;
 - accessible body and exercise charts, including empty and missing-data states;
 - key Home and meal-logging component workflows.
 

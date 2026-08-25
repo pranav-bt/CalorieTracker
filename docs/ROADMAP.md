@@ -4,7 +4,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 ## Product constraints
 
-- Android only for the private alpha.
+- Android only. The static UI toolchain exists solely to package the Android app; browser behavior and web releases are not development targets.
 - Designed for generally healthy adults (18+); not for pregnancy, breastfeeding, minors, or clinical nutrition.
 - Core use requires no account, network connection, or hosted backend.
 - All personal, nutrition, inventory, and workout data is stored locally.
@@ -17,7 +17,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 - Stable: `stable` branch, `dev.pranav.fitnesscompanion`, current release `v0.1.1-alpha`.
 - Development: `development` branch, `dev.pranav.fitnesscompanion.dev`, visibly labeled `Fitness Companion Dev`.
-- Current tagged development checkpoint: `v0.2.2-alpha` (exercise and body progress charts, plus configurable flex-day calorie targets).
+- Current tagged development checkpoint: `v0.2.3-alpha` (selectable workout styles, expanded equipment-aware templates, multilingual Latin-label parsing, and dependency security maintenance).
 - Generated APKs are kept locally in `releases/`; see `docs/BUILD_CHANNELS.md`.
 
 ## Current sprint: private alpha foundation
@@ -56,9 +56,9 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 ### Version 0.2.3
 
-- [ ] Expanded exercise templates and workout styles.
-- [ ] Additional nutrition-label OCR languages.
-- [ ] Dependency and security maintenance.
+- [x] Expanded exercise templates and workout styles.
+- [x] Additional nutrition-label OCR languages.
+- [x] Dependency and security maintenance.
 
 ### Version 0.3.0
 
@@ -98,13 +98,11 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 - Final product name and visual identity (working name: Fitness Companion).
 - Metric-only entry or simultaneous metric/imperial support.
-- Which additional OCR languages ship in version 0.2.3.
-- Which exercise catalogue and workout styles ship in version 0.2.3.
 - Whether private-alpha AI uses prompt sharing, a small shared API budget, or per-user API keys.
 
 ## Discovered gaps and safeguards
 
-- Existing native and web builds use different persistence paths and duplicate business logic. Native/offline behavior is authoritative for this Android fork.
+- Native Android/SQLite behavior is authoritative. Browser persistence and browser feature parity are out of scope.
 - Logged meal nutrients must be immutable snapshots; editing a food reference must not rewrite history.
 - Nutrition recalibration needs enough weight and adherence data. When evidence is insufficient, the report must state that only the baseline formula was rerun.
 - Trend recalibration requires at least four weigh-ins spanning ten days, seven logged food days, and 70% logging coverage. Each calorie change is capped at 150 kcal per recalibration.
@@ -118,5 +116,5 @@ This file is the living scope record for the Android private alpha. Update it wh
 - The current routine preplans day-level nutrition rather than named dishes. Recipe tools expose that plan as **today&apos;s remaining routine target** and subtract meals already logged; named meal scheduling remains separate future scope if needed.
 - The web production build, unit tests, Capacitor sync, and native Gradle debug build pass.
 - Capacitor 8 native plugins require a Java 21 toolchain. A checksum-verified Temurin JDK is kept in the ignored local `.tools` directory for builds.
-- The universal debug APK is roughly 73 MB because it includes offline OCR and SQLite native libraries for ARM and x86. An ARM-only/release split can reduce distribution size after device compatibility is confirmed.
-- The dependency tree currently reports npm audit findings; review them without applying an unbounded automatic upgrade before the private APK handoff.
+- The universal debug APK is roughly 61 MB because it includes offline OCR and SQLite native libraries for ARM and x86. An ARM-only/release split can reduce distribution size after device compatibility is confirmed.
+- The version 0.2.3 dependency review applied bounded same-major updates and fixed transitive versions; the full npm audit reports zero known vulnerabilities.
