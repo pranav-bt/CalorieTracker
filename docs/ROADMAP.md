@@ -17,7 +17,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 - Stable: `stable` branch, `dev.pranav.fitnesscompanion`, current release `v0.1.1-alpha`.
 - Development: `development` branch, `dev.pranav.fitnesscompanion.dev`, visibly labeled `Fitness Companion Dev`.
-- Current tagged development checkpoint: `v0.2.3-alpha` (selectable workout styles, expanded equipment-aware templates, multilingual Latin-label parsing, and dependency security maintenance).
+- Current tagged development checkpoint: `v0.3.0-alpha` (offline named weekly meal planning and explicit planned-meal logging).
 - Generated APKs are kept locally in `releases/`; see `docs/BUILD_CHANNELS.md`.
 
 ## Current sprint: private alpha foundation
@@ -62,7 +62,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 ### Version 0.3.0
 
-- [ ] Named meal planning with breakfast, lunch, and dinner slots and planned dishes.
+- [x] Named meal planning with breakfast, lunch, and dinner slots and planned dishes.
 
 ### Version 0.3.1
 
@@ -113,7 +113,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 - Recipe suggestions currently use an explicit share/copy handoff: the app filters out expired and zero-stock items, shows the exact prompt, and sends nothing until the user acts.
 - Recipe nutrition estimates scale the references stored in the food database. The calculator draft is temporary; committing snapshots all selected ingredients into one meal for today, while exiting writes nothing.
 - Expired pantry stock is never offered for automatic deduction. Confirmed recipe deductions allocate earliest-expiring matching stock first and report partial availability before commit.
-- The current routine preplans day-level nutrition rather than named dishes. Recipe tools expose that plan as **today&apos;s remaining routine target** and subtract meals already logged; named meal scheduling remains separate future scope if needed.
+- Named breakfast, lunch, and dinner dishes repeat by weekday, snapshot food-database nutrition, compare the day with its active target, and require explicit logging from Home.
 - The web production build, unit tests, Capacitor sync, and native Gradle debug build pass.
 - Capacitor 8 native plugins require a Java 21 toolchain. A checksum-verified Temurin JDK is kept in the ignored local `.tools` directory for builds.
 - The universal debug APK is roughly 61 MB because it includes offline OCR and SQLite native libraries for ARM and x86. An ARM-only/release split can reduce distribution size after device compatibility is confirmed.

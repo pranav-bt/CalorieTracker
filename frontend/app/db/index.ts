@@ -401,6 +401,7 @@ export async function getMeals(dateFilter?: string): Promise<MealRecord[]> {
 export async function deleteMeal(id: number): Promise<void> {
   if (native()) {
     const db = await getDb();
+    await db.run("DELETE FROM planned_meal_logs WHERE meal_id=?", [id]);
     const { changes } = await db.run("DELETE FROM meals WHERE id=?", [id]);
     if (!changes?.changes) throw new Error("Meal not found.");
     return;
@@ -412,6 +413,7 @@ export async function deleteMeal(id: number): Promise<void> {
 export async function deleteHistoryDay(day: string): Promise<void> {
   if (native()) {
     const db = await getDb();
+    await db.run("DELETE FROM planned_meal_logs WHERE logged_on=?", [day]);
     const { changes } = await db.run("DELETE FROM meals WHERE date=?", [day]);
     if (!changes?.changes) throw new Error("No meals found for that date.");
     return;

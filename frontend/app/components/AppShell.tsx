@@ -24,6 +24,7 @@ const navItems = [
   { href: "/inventory", label: "Inventory", shortLabel: "Pantry", icon: PackageOpen },
   { href: "/recipes", label: "Recipes", shortLabel: "Recipes", icon: ChefHat },
   { href: "/plan", label: "Plan", shortLabel: "Plan", icon: Target },
+  { href: "/routine", label: "Routine", shortLabel: "Meals", icon: CalendarDays },
   { href: "/workout", label: "Workout", shortLabel: "Train", icon: Dumbbell },
   { href: "/history", label: "History", shortLabel: "History", icon: CalendarDays },
 ];

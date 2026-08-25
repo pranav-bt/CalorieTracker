@@ -2333,6 +2333,76 @@ button:disabled {
   display: none;
 }
 
+.weekdayTabs {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.weekdayTabs button {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 10px 5px;
+}
+
+.weekdayTabs button.active {
+  background: #e8f4ef;
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+.weekdayTabs small { display: none; }
+
+.routineDaySummary {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.routineDaySummary > div { display: flex; gap: 14px; }
+.routineDaySummary > div:first-child { flex-direction: column; gap: 3px; }
+.routineGoalGap { display: flex; flex-direction: column; gap: 8px; }
+.routineGoalGap > div { align-items: center; display: flex; flex-wrap: wrap; gap: 14px; }
+.routineGoalGap > div strong { color: var(--accent-dark); margin-right: auto; }
+.routineGoalGap > div span { color: var(--muted); font-size: 13px; }
+
+.routineSlotGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.routineSlotCard { display: flex; flex-direction: column; gap: 12px; }
+.routineSlotCard .actionRow { margin-top: auto; }
+.routineSlotCard > strong { font-size: 13px; }
+
+.routineSlot {
+  color: var(--accent-dark);
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.routineEditor { display: flex; flex-direction: column; gap: 14px; }
+.routineIngredientRows { display: flex; flex-direction: column; gap: 8px; }
+.routineIngredientRow { align-items: center; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) 110px 55px 40px; }
+.routineIngredientRow > span { color: var(--muted); font-size: 13px; }
+.addRoutineIngredient { align-self: flex-start; }
+.routinePreview { align-items: center; background: var(--bg); border-radius: 10px; display: flex; flex-wrap: wrap; gap: 14px; padding: 12px; }
+.routinePreview strong { color: var(--accent-dark); margin-right: auto; }
+.routinePreview span { color: var(--muted); font-size: 13px; }
+
+.todayRoutineList { display: flex; flex-direction: column; gap: 9px; }
+.todayRoutineList article { align-items: center; border-top: 1px solid var(--line); display: flex; gap: 12px; justify-content: space-between; padding-top: 10px; }
+.todayRoutineList article > div { display: flex; flex-direction: column; gap: 3px; }
+.todayRoutineList small { color: var(--muted); }
+.loggedBadge { align-items: center; color: var(--accent); display: flex; font-size: 13px; font-weight: 700; gap: 4px; }
+.dangerButton { background: transparent; border: 1px solid #e3bcbc; color: var(--danger); }
+.routineEmpty { align-items: center; color: var(--muted); display: flex; gap: 8px; }
+
 @media (max-width: 760px) {
   .inventoryReminder {
     align-items: flex-start;
@@ -2517,6 +2587,13 @@ button:disabled {
     padding: 6px 2px;
     text-align: center;
   }
+
+  .routineSlotGrid { grid-template-columns: 1fr; }
+  .routineDaySummary { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .routineDaySummary > div:last-child { flex-wrap: wrap; }
+  .routineIngredientRow { grid-template-columns: minmax(0, 1fr) 82px 44px 40px; }
+  .todayRoutine .panelHeader { align-items: flex-start; }
+  .todayRoutineList article { align-items: flex-start; }
 
   .mobileNavLink.active {
     color: var(--accent-dark);

@@ -9,7 +9,8 @@
 - `v0.2.1-alpha` identifies the inventory expiry-alert and confirmed recipe-deduction checkpoint.
 - `v0.2.2-alpha` identifies the progress-chart and configurable flex-day checkpoint.
 - `v0.2.3-alpha` identifies the workout-style, multilingual label-parsing, and security-maintenance checkpoint.
-- The next planned development release is `0.3.0-alpha`.
+- `v0.3.0-alpha` identifies the offline named-meal routine and explicit Home logging checkpoint.
+- The next planned development release is `0.3.1-alpha` for device-test bug fixes.
 - `fitness-companion` is retained as the original feature branch and historical remote branch.
 
 Promote a tested development checkpoint by merging it into `stable`, bumping Android's `versionCode` and `versionName`, building the stable channel, and creating a new annotated version tag.

@@ -2,10 +2,11 @@ import { SQLiteDBConnection } from "@capacitor-community/sqlite";
 import { getDb } from "./client";
 import { REWARDS } from "./messages";
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 export async function initDb(): Promise<void> {
   const db = await getDb();
+  await db.execute("PRAGMA foreign_keys = ON;", false);
   await db.execute(`
     CREATE TABLE IF NOT EXISTS db_meta (
       key   TEXT PRIMARY KEY,
@@ -38,6 +39,10 @@ export async function initDb(): Promise<void> {
     await runMigration6(db);
     await setSchemaVersion(db, 6);
   }
+  if (currentVersion < 7) {
+    await runMigration7(db);
+    await setSchemaVersion(db, 7);
+  }
   await db.execute(`PRAGMA user_version = ${SCHEMA_VERSION};`, false);
 }
 
@@ -51,6 +56,56 @@ async function runMigration5(db: SQLiteDBConnection): Promise<void> {
 
 async function runMigration6(db: SQLiteDBConnection): Promise<void> {
   await addColumnIfMissing(db, "user_profile", "workout_style", "TEXT NOT NULL DEFAULT 'balanced'");
+}
+
+async function runMigration7(db: SQLiteDBConnection): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS planned_meals (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      weekday        INTEGER NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+      slot           TEXT    NOT NULL CHECK (slot IN ('breakfast', 'lunch', 'dinner')),
+      name           TEXT    NOT NULL,
+      total_calories INTEGER NOT NULL DEFAULT 0,
+      protein_g      REAL    NOT NULL DEFAULT 0,
+      carbs_g        REAL    NOT NULL DEFAULT 0,
+      fat_g          REAL    NOT NULL DEFAULT 0,
+      fiber_g        REAL    NOT NULL DEFAULT 0,
+      created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(weekday, slot)
+    );
+
+    CREATE TABLE IF NOT EXISTS planned_meal_items (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      planned_meal_id INTEGER NOT NULL,
+      food_id         INTEGER,
+      name            TEXT    NOT NULL,
+      quantity        REAL    NOT NULL,
+      unit            TEXT    NOT NULL,
+      calories        INTEGER NOT NULL,
+      protein_g       REAL    NOT NULL DEFAULT 0,
+      carbs_g         REAL    NOT NULL DEFAULT 0,
+      fat_g           REAL    NOT NULL DEFAULT 0,
+      fiber_g         REAL    NOT NULL DEFAULT 0,
+      order_index     INTEGER NOT NULL,
+      FOREIGN KEY (planned_meal_id) REFERENCES planned_meals(id) ON DELETE CASCADE,
+      FOREIGN KEY (food_id) REFERENCES foods(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS planned_meal_logs (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      planned_meal_id INTEGER NOT NULL,
+      meal_id         INTEGER NOT NULL,
+      logged_on       TEXT    NOT NULL,
+      created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(planned_meal_id, logged_on),
+      FOREIGN KEY (planned_meal_id) REFERENCES planned_meals(id) ON DELETE CASCADE,
+      FOREIGN KEY (meal_id) REFERENCES meals(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_planned_meals_weekday ON planned_meals(weekday, slot);
+    CREATE INDEX IF NOT EXISTS idx_planned_meal_logs_date ON planned_meal_logs(logged_on);
+  `);
 }
 
 async function runMigration1(db: SQLiteDBConnection): Promise<void> {

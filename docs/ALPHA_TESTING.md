@@ -32,6 +32,11 @@ Installing a newer APK with the same debug signature should retain local data. U
 - [ ] Exit the recipe calculator and confirm nothing was logged; reopen it, commit the recipe, and confirm all ingredients appear as one meal in today&apos;s totals.
 - [ ] With matching pantry stock, leave deduction unchecked and commit a recipe; confirm stock is unchanged. Repeat with deduction checked and confirm earliest-expiring usable stock is reduced while expired stock is untouched.
 - [ ] In the recipe calculator choose **Today&apos;s preplanned routine**, confirm the before-recipe remainder matches Home, and confirm the after-recipe preview shows amounts left or over for calories and every planned macro.
+- [ ] Open Routine, choose several weekdays, and create named breakfast, lunch, and dinner dishes from saved foods with multiple quantities.
+- [ ] Confirm Routine shows each day&apos;s total and the calories/macros still needed to reach that weekday&apos;s active plan.
+- [ ] Edit one source food after saving a planned dish; confirm the saved dish keeps its original nutrition snapshot until you explicitly resave it.
+- [ ] On Home, confirm today&apos;s planned meals appear but do not affect totals until **Log meal** is pressed; confirm a logged slot cannot be accidentally logged twice.
+- [ ] Delete the logged planned meal from History, return to Home, and confirm that planned slot can be logged again.
 - [ ] On Home, confirm each macro card shows the amount left (or over), plus logged and target values.
 - [ ] Generate a workout plan, log sets and recovery/pain data, then run workout recalibration.
 - [ ] Generate plans with balanced, strength, muscle-building, endurance, hybrid, and mobility styles; confirm the sessions and prescriptions visibly change.

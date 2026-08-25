@@ -56,6 +56,30 @@ export type MealRecord = {
   total_fiber_g: number;
 };
 
+export type MealSlot = "breakfast" | "lunch" | "dinner";
+
+export type PlannedMealItem = MealItem & {
+  id: number;
+  food_id: number | null;
+};
+
+export type PlannedMeal = Macros & {
+  id: number;
+  weekday: number;
+  slot: MealSlot;
+  name: string;
+  total_calories: number;
+  items: PlannedMealItem[];
+  logged_meal_id: number | null;
+};
+
+export type PlannedMealDraft = {
+  weekday: number;
+  slot: MealSlot;
+  name: string;
+  items: Array<{ food_id: number; quantity: number }>;
+};
+
 export type DailySummary = {
   date: string;
   goal: number;

@@ -21,19 +21,20 @@ describe("initDb migrations", () => {
 
     expect(db.execute).toHaveBeenCalledWith(expect.stringContaining("ALTER TABLE user_profile ADD COLUMN flex_day_calorie_target REAL"));
     expect(db.execute).toHaveBeenCalledWith(expect.stringContaining("ALTER TABLE user_profile ADD COLUMN workout_style TEXT NOT NULL DEFAULT 'balanced'"));
-    expect(db.run).toHaveBeenCalledWith(expect.stringContaining("schema_version"), ["6"]);
-    expect(db.execute).toHaveBeenLastCalledWith("PRAGMA user_version = 6;", false);
+    expect(db.execute).toHaveBeenCalledWith(expect.stringContaining("CREATE TABLE IF NOT EXISTS planned_meals"));
+    expect(db.run).toHaveBeenCalledWith(expect.stringContaining("schema_version"), ["7"]);
+    expect(db.execute).toHaveBeenLastCalledWith("PRAGMA user_version = 7;", false);
   });
 
   it("leaves an up-to-date schema unchanged", async () => {
     const db = {
       execute: jest.fn().mockResolvedValue({ changes: { changes: 0 } }),
       run: jest.fn().mockResolvedValue({ changes: { changes: 0 } }),
-      query: jest.fn().mockResolvedValue({ values: [{ value: "6" }] }),
+      query: jest.fn().mockResolvedValue({ values: [{ value: "7" }] }),
     };
     mockedGetDb.mockResolvedValue(db as never);
     await initDb();
-    expect(db.execute).toHaveBeenCalledTimes(2);
+    expect(db.execute).toHaveBeenCalledTimes(3);
     expect(db.run).not.toHaveBeenCalled();
   });
 });

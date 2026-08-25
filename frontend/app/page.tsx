@@ -7,6 +7,7 @@ import { getDailyMacroSummary, getDailySummary, getHistory, completeChallenge as
 import type { DailyMacroSummary, DailySummary, HistoryDay } from "./types";
 import { QuickMealLogger } from "./components/QuickMealLogger";
 import { InventoryExpiryAlerts } from "./components/InventoryExpiryAlerts";
+import { TodayRoutineMeals } from "./components/TodayRoutineMeals";
 
 const EMPTY_MACROS: DailyMacroSummary = {
   consumed: { protein_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0 },
@@ -119,6 +120,8 @@ export default function Home() {
       )}
 
       <QuickMealLogger onLogged={loadDashboard} />
+
+      <TodayRoutineMeals onLogged={loadDashboard} />
 
       <section className="panel">
         <div className="panelHeader">
