@@ -2,15 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, Clock, Gift, Heart } from "lucide-react";
+import Link from "next/link";
 import { claimRedemption, getHeartPoints, redeemReward } from "../db";
 import type { HeartPointsBalance, Redemption, RewardItem } from "../types";
-
-const SOURCE_LABELS: Record<string, string> = {
-  log_meal: "Logged a meal",
-  goal_hit: "Hit daily goal",
-  streak_7: "7-day streak!",
-  streak_30: "30-day streak!",
-};
 
 export default function HeartPointsPage() {
   const [data, setData] = useState<HeartPointsBalance | null>(null);
@@ -36,7 +30,7 @@ export default function HeartPointsPage() {
     setError("");
     try {
       await redeemReward(reward.id);
-      setSuccessMsg(`"${reward.name}" is now pending! Enjoy it when it happens bubu!`);
+      setSuccessMsg(formatRewardMessage(data.redemption_pending_message, reward.name));
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not redeem reward.");
@@ -50,7 +44,7 @@ export default function HeartPointsPage() {
     setError("");
     try {
       await claimRedemption(r.id);
-      setSuccessMsg(`"${r.reward}" marked as done! Amazing!`);
+      setSuccessMsg(formatRewardMessage(data?.redemption_claimed_message ?? "", r.reward));
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not claim reward.");
@@ -67,22 +61,28 @@ export default function HeartPointsPage() {
       <div className="pageHeader">
         <div>
           <p className="eyebrow">Rewards</p>
-          <h1>Heart Points</h1>
+          <h1>{data?.system_name ?? "Rewards"}</h1>
         </div>
+        <Link className="textButton" href="/settings">Configure</Link>
       </div>
 
       {error && <p className="error">{error}</p>}
       {successMsg && <p className="success">{successMsg}</p>}
 
-      <div className="heartBalanceCard">
+      {data && !data.enabled && <section className="panel disabledRewardsNotice"><Gift size={22} /><div><h2>Points and rewards are disabled</h2><p className="muted">Your existing balance and redemption history are preserved. Enable them in Settings when you want to use them again.</p></div><Link className="textButton" href="/settings">Open settings</Link></section>}
+
+      <div className={`heartBalanceCard ${data && !data.enabled ? "featureDisabled" : ""}`}>
         <Heart size={32} className="heartBalanceIcon" />
         <div>
           <p className="metricLabel">Your balance</p>
           <strong className="heartBalanceNum">{data?.balance ?? 0}</strong>
+          <small>{data?.point_name_plural ?? "points"}</small>
         </div>
       </div>
 
-      {pendingRedemptions.length > 0 && (
+      {data?.enabled && data.weekly_goal > 0 && <section className="panel weeklyPointsGoal"><div><span className="metricLabel">This week</span><strong>{data.weekly_earned} / {data.weekly_goal} {data.point_name_plural}</strong></div><div className="progressTrack"><span style={{ width: `${Math.min(100, Math.round((data.weekly_earned / data.weekly_goal) * 100))}%` }} /></div></section>}
+
+      {data?.enabled && pendingRedemptions.length > 0 && (
         <section className="panel pendingRewardsPanel">
           <div className="panelHeader">
             <h2>Pending rewards</h2>
@@ -113,7 +113,7 @@ export default function HeartPointsPage() {
         </section>
       )}
 
-      <section className="panel">
+      {data?.enabled && <section className="panel">
         <div className="panelHeader">
           <h2>Rewards catalogue</h2>
           <Gift size={18} />
@@ -126,7 +126,7 @@ export default function HeartPointsPage() {
                 <p className="rewardName">{r.name}</p>
                 <p className="rewardCost">
                   <Heart size={13} />
-                  {r.cost} pts
+                  {r.cost} {data.point_name_plural}
                 </p>
                 <button
                   className="rewardBtn"
@@ -144,7 +144,7 @@ export default function HeartPointsPage() {
             );
           })}
         </div>
-      </section>
+      </section>}
 
       {claimedRedemptions.length > 0 && (
         <section className="panel">
@@ -164,7 +164,7 @@ export default function HeartPointsPage() {
         </section>
       )}
 
-      <section className="panel">
+      {data?.enabled && <section className="panel">
         <div className="panelHeader">
           <h2>Recent activity</h2>
           <Clock size={18} />
@@ -176,14 +176,18 @@ export default function HeartPointsPage() {
           {data?.log.map((entry) => (
             <li key={entry.id} className="heartLogItem">
               <span className="heartLogSource">
-                {SOURCE_LABELS[entry.source] ?? entry.source}
+                {entry.source}
               </span>
               <span className="heartLogPoints">+{entry.points}</span>
               <span className="heartLogDate">{entry.created_at.slice(0, 10)}</span>
             </li>
           ))}
         </ul>
-      </section>
+      </section>}
     </section>
   );
+}
+
+function formatRewardMessage(template: string, reward: string): string {
+  return template.replaceAll("{reward}", reward);
 }

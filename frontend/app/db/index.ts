@@ -2,20 +2,6 @@
 
 import { Capacitor } from "@capacitor/core";
 import { getDb, inTransaction } from "./client";
-import {
-  AFFIRMATIONS,
-  DAY_GREETINGS,
-  END_OF_DAY_GOOD,
-  END_OF_DAY_TOUGH,
-  HEART_POINT_RULES,
-  LOVE_NOTES,
-  MILESTONE_MESSAGES,
-  REWARDS,
-  WEEKLY_CHALLENGES,
-  WEEKLY_REPORT_GREAT,
-  WEEKLY_REPORT_OK,
-  WEEKLY_REPORT_TOUGH,
-} from "./messages";
 import type {
   DailySummary,
   DailyMacroSummary,
@@ -31,6 +17,13 @@ import type {
   Unit,
 } from "../types";
 import { calculateTodayTarget } from "../domain/dailyTarget";
+import {
+  awardConfiguredPoints,
+  configuredPointValue,
+  getConfiguredLoveNote,
+  loadRewardRuntime,
+  rewardMessagePool,
+} from "./rewards";
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
@@ -86,12 +79,18 @@ function pick<T>(pool: T[], idx: number): T {
   return pool[((idx % pool.length) + pool.length) % pool.length];
 }
 
+function pickOptional(pool: string[], idx: number): string {
+  return pool.length ? pick(pool, idx) : "";
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Daily summary (native)
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function nativeDailySummary(today: string = getToday()): Promise<DailySummary> {
   const db = await getDb();
+  const rewardRuntime = await loadRewardRuntime(db);
+  const rewardPreferences = rewardRuntime.preferences;
   const { values: sv } = await db.query("SELECT * FROM settings WHERE id = 1");
   const s = sv![0] as Record<string, unknown>;
 
@@ -161,7 +160,9 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
   const weekConsumed = weekR.values![0].v as number;
   const daysLoggedThisWeek = daysLoggedR.values![0].v as number;
   const loggedDates = new Set((allDatesR.values ?? []).map((r) => r.date as string));
-  const heartPoints = (earnedR.values![0].v as number) - (spentR.values![0].v as number);
+  const heartPoints = rewardPreferences.enabled && rewardPreferences.points_enabled
+    ? (earnedR.values![0].v as number) - (spentR.values![0].v as number)
+    : 0;
 
   // Streak
   let streak = 0;
@@ -173,10 +174,11 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
   }
 
   const dayIdx = getDayOfYear(cur);
-  const affirmation = pick(AFFIRMATIONS, dayIdx);
-  const greetingBase = DAY_GREETINGS.find(([d]) => d === pyWeekday)?.[1] ?? "";
+  const motivationsEnabled = rewardPreferences.enabled && rewardPreferences.motivations_enabled;
+  const affirmation = motivationsEnabled ? pickOptional(rewardMessagePool(rewardRuntime, "affirmation"), dayIdx) : "";
+  const greetingBase = motivationsEnabled ? pickOptional(rewardMessagePool(rewardRuntime, "day_greeting", String(pyWeekday)), dayIdx) : "";
   const partnerName = (s.partner_name as string) ?? "";
-  const greeting = partnerName ? `Hey ${partnerName}! ${greetingBase}` : greetingBase;
+  const greeting = greetingBase ? (partnerName ? `Hey ${partnerName}! ${greetingBase}` : greetingBase) : "";
 
   const daysLeft = Math.floor((wEnd.getTime() - cur.getTime()) / 86_400_000) + 1;
   const { adjusted_goal: adjustedGoal, carryover_adjustment: carryoverAdjustment } = calculateTodayTarget({
@@ -189,21 +191,21 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
 
   let endOfDayNote: string | null = null;
   if (todayConsumed > 0) {
-    endOfDayNote = pick(todayConsumed <= adjustedGoal ? END_OF_DAY_GOOD : END_OF_DAY_TOUGH, dayIdx);
+    const category = todayConsumed <= adjustedGoal ? "end_of_day_good" : "end_of_day_tough";
+    endOfDayNote = motivationsEnabled ? pickOptional(rewardMessagePool(rewardRuntime, category), dayIdx) || null : null;
   }
 
   let weeklyReportMessage: string | null = null;
   if (daysLoggedThisWeek > 0) {
-    const pool =
-      weekConsumed <= weeklyGoal ? WEEKLY_REPORT_GREAT :
-      weekConsumed <= weeklyGoal * 1.15 ? WEEKLY_REPORT_OK :
-      WEEKLY_REPORT_TOUGH;
-    weeklyReportMessage = pick(pool, dayIdx);
+    const category = weekConsumed <= weeklyGoal ? "weekly_report_great" : weekConsumed <= weeklyGoal * 1.15 ? "weekly_report_ok" : "weekly_report_tough";
+    weeklyReportMessage = motivationsEnabled ? pickOptional(rewardMessagePool(rewardRuntime, category), dayIdx) || null : null;
   }
 
   const isoWeek = getISOWeek(cur);
-  const currentChallenge = pick(WEEKLY_CHALLENGES, isoWeek - 1);
+  const challengesEnabled = rewardPreferences.enabled && rewardPreferences.weekly_challenges_enabled;
+  const currentChallenge = challengesEnabled ? pickOptional(rewardMessagePool(rewardRuntime, "weekly_challenge"), isoWeek - 1) : "";
   const challengeCompleted = (s.challenge_completed_week as string) === weekStart;
+  const challengeCompletedMessage = challengesEnabled ? pickOptional(rewardMessagePool(rewardRuntime, "challenge_completed"), isoWeek - 1) : "";
 
   return {
     date: today,
@@ -235,7 +237,9 @@ async function nativeDailySummary(today: string = getToday()): Promise<DailySumm
     weekly_report_message: weeklyReportMessage,
     current_challenge: currentChallenge,
     challenge_completed: challengeCompleted,
+    challenge_completed_message: challengeCompletedMessage,
     heart_points: heartPoints,
+    rewards_enabled: rewardPreferences.enabled,
   };
 }
 
@@ -268,6 +272,8 @@ export async function getDailySummary(): Promise<DailySummary> {
     carryover_adjustment: summary.carryover_adjustment ?? ((summary.adjusted_goal ?? plannedGoal) - plannedGoal),
     target_source: summary.target_source ?? "manual",
     plan_day_kind: summary.plan_day_kind ?? null,
+    rewards_enabled: summary.rewards_enabled ?? false,
+    challenge_completed_message: summary.challenge_completed_message ?? "",
   } as DailySummary;
 }
 
@@ -513,12 +519,13 @@ export async function logMeal(
     const summary = await nativeDailySummary(today);
     const milestoneKey = detectMilestoneKey(summary, totalCalories);
 
-    const basePoints = HEART_POINT_RULES.log_meal ?? 1;
-    await db.run("INSERT INTO heart_points_log (source, points) VALUES (?, ?)", ["log_meal", basePoints]);
+    const rewardRuntime = await loadRewardRuntime(db);
+    const basePoints = configuredPointValue(rewardRuntime, "log_meal");
+    if (basePoints > 0) await db.run("INSERT INTO heart_points_log (source, points) VALUES (?, ?)", ["log_meal", basePoints]);
 
     let bonusPoints = 0;
     if (milestoneKey && milestoneKey !== "first_meal_today") {
-      bonusPoints = HEART_POINT_RULES[milestoneKey] ?? 0;
+      bonusPoints = configuredPointValue(rewardRuntime, milestoneKey);
       if (bonusPoints > 0) {
         await db.run("INSERT INTO heart_points_log (source, points) VALUES (?, ?)", [milestoneKey, bonusPoints]);
       }
@@ -526,9 +533,9 @@ export async function logMeal(
 
     const dayIdx = getDayOfYear(new Date());
     let milestone: string | null = null;
-    if (milestoneKey) {
-      const msgs = MILESTONE_MESSAGES[milestoneKey] ?? [];
-      if (msgs.length) milestone = pick(msgs, dayIdx);
+    if (milestoneKey && rewardRuntime.preferences.enabled && rewardRuntime.preferences.motivations_enabled) {
+      const messages = rewardMessagePool(rewardRuntime, "milestone", milestoneKey);
+      if (messages.length) milestone = pick(messages, dayIdx);
     }
 
     return {
@@ -776,7 +783,15 @@ export async function completeChallenge(): Promise<void> {
   if (native()) {
     const db = await getDb();
     const summary = await nativeDailySummary();
-    await db.run("UPDATE settings SET challenge_completed_week=? WHERE id=1", [summary.week_start]);
+    if (!summary.current_challenge || summary.challenge_completed) return;
+    await inTransaction(db, async () => {
+      const { changes } = await db.run(
+        "UPDATE settings SET challenge_completed_week=? WHERE id=1 AND challenge_completed_week<>?",
+        [summary.week_start, summary.week_start],
+        false
+      );
+      if (changes?.changes) await awardConfiguredPoints(db, "weekly_challenge", false);
+    });
     return;
   }
   await fetch(`${API}/challenge/complete`, { method: "POST" });
@@ -786,8 +801,8 @@ export async function completeChallenge(): Promise<void> {
 // Public API: Love note
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function getLoveNote(): string {
-  return LOVE_NOTES[Math.floor(Math.random() * LOVE_NOTES.length)];
+export async function getLoveNote(): Promise<string | null> {
+  return getConfiguredLoveNote();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -797,14 +812,24 @@ export function getLoveNote(): string {
 export async function getHeartPoints(): Promise<HeartPointsBalance> {
   if (native()) {
     const db = await getDb();
-    const [earnedR, spentR, logR, redemptionR] = await Promise.all([
+    const runtime = await loadRewardRuntime(db);
+    const { values: settingRows } = await db.query("SELECT week_start_day FROM settings WHERE id=1");
+    const weekStartDay = Number(settingRows?.[0]?.week_start_day ?? 0);
+    const now = new Date();
+    const weekday = (now.getDay() + 6) % 7;
+    const daysSince = ((weekday - weekStartDay) % 7 + 7) % 7;
+    const weekStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSince);
+    const weekStart = `${weekStartDate.getFullYear()}-${String(weekStartDate.getMonth() + 1).padStart(2, "0")}-${String(weekStartDate.getDate()).padStart(2, "0")}`;
+    const [earnedR, spentR, weeklyR, logR, redemptionR, rewardR] = await Promise.all([
       db.query("SELECT COALESCE(SUM(points),0) as v FROM heart_points_log"),
       db.query("SELECT COALESCE(SUM(points_spent),0) as v FROM redemptions"),
-      db.query("SELECT id, source, points, created_at FROM heart_points_log ORDER BY id DESC LIMIT 20"),
+      db.query("SELECT COALESCE(SUM(points),0) as v FROM heart_points_log WHERE date(created_at)>=?", [weekStart]),
+      db.query("SELECT h.id, h.source, COALESCE(r.label, h.source) AS source_label, h.points, h.created_at FROM heart_points_log h LEFT JOIN point_rules r ON r.action_key=h.source ORDER BY h.id DESC LIMIT 20"),
       db.query("SELECT id, reward, points_spent, created_at, claimed, claimed_at FROM redemptions ORDER BY id DESC"),
+      db.query("SELECT id, name, cost FROM rewards_catalogue WHERE enabled=1 ORDER BY id"),
     ]);
     const balance = (earnedR.values![0].v as number) - (spentR.values![0].v as number);
-    const rewards: RewardItem[] = REWARDS.map(([name, cost], i) => ({ id: i + 1, name, cost }));
+    const rewards: RewardItem[] = (rewardR.values ?? []).map((row) => ({ id: Number(row.id), name: String(row.name), cost: Number(row.cost) }));
     const redemptions: Redemption[] = (redemptionR.values ?? []).map((r) => ({
       id: r.id as number,
       reward: r.reward as string,
@@ -814,8 +839,15 @@ export async function getHeartPoints(): Promise<HeartPointsBalance> {
       claimed_at: r.claimed_at as string | null,
     }));
     return {
+      enabled: runtime.preferences.enabled && runtime.preferences.points_enabled,
+      system_name: runtime.preferences.system_name,
+      point_name_plural: runtime.preferences.point_name_plural,
       balance,
-      log: (logR.values ?? []).map((r) => ({ id: r.id as number, source: r.source as string, points: r.points as number, created_at: r.created_at as string })),
+      weekly_earned: Number(weeklyR.values?.[0]?.v ?? 0),
+      weekly_goal: runtime.preferences.weekly_points_goal,
+      redemption_pending_message: pickOptional(rewardMessagePool(runtime, "redemption_pending"), 0),
+      redemption_claimed_message: pickOptional(rewardMessagePool(runtime, "redemption_claimed"), 0),
+      log: (logR.values ?? []).map((r) => ({ id: r.id as number, source: r.source_label as string, points: r.points as number, created_at: r.created_at as string })),
       rewards,
       redemptions,
     };
@@ -828,17 +860,22 @@ export async function getHeartPoints(): Promise<HeartPointsBalance> {
 export async function redeemReward(rewardId: number): Promise<{ redeemed: string; new_balance: number }> {
   if (native()) {
     const db = await getDb();
-    const reward = REWARDS[rewardId - 1];
-    if (!reward) throw new Error("Reward not found.");
-    const [name, cost] = reward;
-    const [earnedR, spentR] = await Promise.all([
-      db.query("SELECT COALESCE(SUM(points),0) as v FROM heart_points_log"),
-      db.query("SELECT COALESCE(SUM(points_spent),0) as v FROM redemptions"),
-    ]);
-    const balance = (earnedR.values![0].v as number) - (spentR.values![0].v as number);
-    if (balance < cost) throw new Error(`Not enough heart points. Need ${cost}, have ${balance}.`);
-    await db.run("INSERT INTO redemptions (reward, points_spent) VALUES (?, ?)", [name, cost]);
-    return { redeemed: name, new_balance: balance - cost };
+    return inTransaction(db, async () => {
+      const runtime = await loadRewardRuntime(db);
+      if (!runtime.preferences.enabled || !runtime.preferences.points_enabled) throw new Error("Rewards are disabled in Settings.");
+      const { values: rewardRows } = await db.query("SELECT name, cost FROM rewards_catalogue WHERE id=? AND enabled=1", [rewardId]);
+      const reward = rewardRows?.[0];
+      if (!reward) throw new Error("Reward not found.");
+      const name = String(reward.name); const cost = Number(reward.cost);
+      const [earnedR, spentR] = await Promise.all([
+        db.query("SELECT COALESCE(SUM(points),0) as v FROM heart_points_log"),
+        db.query("SELECT COALESCE(SUM(points_spent),0) as v FROM redemptions"),
+      ]);
+      const balance = Number(earnedR.values?.[0]?.v ?? 0) - Number(spentR.values?.[0]?.v ?? 0);
+      if (balance < cost) throw new Error(`Not enough ${runtime.preferences.point_name_plural}. Need ${cost}, have ${balance}.`);
+      await db.run("INSERT INTO redemptions (reward, points_spent) VALUES (?, ?)", [name, cost], false);
+      return { redeemed: name, new_balance: balance - cost };
+    });
   }
   const r = await fetch(`${API}/heart-points/redeem`, {
     method: "POST",

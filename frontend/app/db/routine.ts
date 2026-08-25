@@ -4,6 +4,7 @@ import { Capacitor } from "@capacitor/core";
 import { getDb, inTransaction } from "./client";
 import { localDate, totalMeal, weekdayForLocalDate } from "../domain/routine";
 import type { MealItem, MealSlot, PlannedMeal, PlannedMealDraft, PlannedMealItem, Unit } from "../types";
+import { awardConfiguredPoints } from "./rewards";
 
 function requireAndroid(): void {
   if (!Capacitor.isNativePlatform()) throw new Error("Meal routines are available in the Android app.");
@@ -176,7 +177,7 @@ export async function logRoutineMeal(id: number, loggedOn = localDate()): Promis
       [id, mealId, loggedOn],
       false
     );
-    await db.run("INSERT INTO heart_points_log (source, points) VALUES ('log_meal', 1)", [], false);
+    await awardConfiguredPoints(db, "log_meal", false);
     return mealId;
   });
 }

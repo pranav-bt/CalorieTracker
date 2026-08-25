@@ -227,7 +227,7 @@ export default function Home() {
           <p className={`challengeText ${challengeDone ? "challengeDone" : ""}`}>
             {summary.current_challenge}
           </p>
-          {challengeDone && <p className="challengeCompletedNote">Challenge completed! Amazing work!</p>}
+          {challengeDone && summary.challenge_completed_message && <p className="challengeCompletedNote">{summary.challenge_completed_message}</p>}
         </section>
       )}
     </section>

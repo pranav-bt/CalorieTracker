@@ -108,7 +108,9 @@ export type DailySummary = {
   weekly_report_message: string | null;
   current_challenge: string;
   challenge_completed: boolean;
+  challenge_completed_message: string;
   heart_points: number;
+  rewards_enabled: boolean;
 };
 
 export type HeartPointEntry = {
@@ -134,10 +136,51 @@ export type Redemption = {
 };
 
 export type HeartPointsBalance = {
+  enabled: boolean;
+  system_name: string;
+  point_name_plural: string;
   balance: number;
+  weekly_earned: number;
+  weekly_goal: number;
+  redemption_pending_message: string;
+  redemption_claimed_message: string;
   log: HeartPointEntry[];
   rewards: RewardItem[];
   redemptions: Redemption[];
+};
+
+export type RewardPreferences = {
+  enabled: boolean;
+  motivations_enabled: boolean;
+  love_notes_enabled: boolean;
+  weekly_challenges_enabled: boolean;
+  points_enabled: boolean;
+  system_name: string;
+  point_name_singular: string;
+  point_name_plural: string;
+  weekly_points_goal: number;
+};
+
+export type PointRule = {
+  action_key: string;
+  label: string;
+  points: number;
+  enabled: boolean;
+};
+
+export type RewardMessage = {
+  id: number;
+  category: string;
+  context_key: string;
+  text: string;
+  order_index: number;
+};
+
+export type RewardConfiguration = {
+  preferences: RewardPreferences;
+  point_rules: PointRule[];
+  rewards: RewardItem[];
+  messages: RewardMessage[];
 };
 
 export type HistoryDay = {

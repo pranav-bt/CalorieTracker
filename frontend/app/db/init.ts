@@ -1,8 +1,12 @@
 import { SQLiteDBConnection } from "@capacitor-community/sqlite";
 import { getDb } from "./client";
-import { REWARDS } from "./messages";
+import {
+  AFFIRMATIONS, DAY_GREETINGS, END_OF_DAY_GOOD, END_OF_DAY_TOUGH, LOVE_NOTES,
+  MILESTONE_MESSAGES, REWARDS, WEEKLY_CHALLENGES, WEEKLY_REPORT_GREAT,
+  WEEKLY_REPORT_OK, WEEKLY_REPORT_TOUGH,
+} from "./messages";
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 export async function initDb(): Promise<void> {
   const db = await getDb();
@@ -42,6 +46,10 @@ export async function initDb(): Promise<void> {
   if (currentVersion < 7) {
     await runMigration7(db);
     await setSchemaVersion(db, 7);
+  }
+  if (currentVersion < 8) {
+    await runMigration8(db);
+    await setSchemaVersion(db, 8);
   }
   await db.execute(`PRAGMA user_version = ${SCHEMA_VERSION};`, false);
 }
@@ -106,6 +114,75 @@ async function runMigration7(db: SQLiteDBConnection): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_planned_meals_weekday ON planned_meals(weekday, slot);
     CREATE INDEX IF NOT EXISTS idx_planned_meal_logs_date ON planned_meal_logs(logged_on);
   `);
+}
+
+async function runMigration8(db: SQLiteDBConnection): Promise<void> {
+  await addColumnIfMissing(db, "rewards_catalogue", "enabled", "INTEGER NOT NULL DEFAULT 1");
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS reward_preferences (
+      id                        INTEGER PRIMARY KEY CHECK (id = 1),
+      enabled                   INTEGER NOT NULL DEFAULT 1,
+      motivations_enabled       INTEGER NOT NULL DEFAULT 1,
+      love_notes_enabled        INTEGER NOT NULL DEFAULT 1,
+      weekly_challenges_enabled INTEGER NOT NULL DEFAULT 1,
+      points_enabled            INTEGER NOT NULL DEFAULT 1,
+      system_name               TEXT    NOT NULL DEFAULT 'Heart Points',
+      point_name_singular       TEXT    NOT NULL DEFAULT 'point',
+      point_name_plural         TEXT    NOT NULL DEFAULT 'points',
+      weekly_points_goal        INTEGER NOT NULL DEFAULT 15,
+      updated_at                TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS point_rules (
+      action_key TEXT PRIMARY KEY,
+      label      TEXT    NOT NULL,
+      points     INTEGER NOT NULL CHECK (points >= 0),
+      enabled    INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS reward_messages (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      category    TEXT    NOT NULL,
+      context_key TEXT    NOT NULL DEFAULT '',
+      text        TEXT    NOT NULL,
+      order_index INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_reward_messages_group ON reward_messages(category, context_key, order_index);
+    INSERT OR IGNORE INTO reward_preferences (id) VALUES (1);
+  `);
+
+  const pointRules: Array<[string, string, number]> = [
+    ["log_meal", "Log a meal", 1], ["goal_hit", "Reach the daily calorie target", 3],
+    ["streak_7", "Reach a 7-day logging streak", 10], ["streak_30", "Reach a 30-day logging streak", 25],
+    ["weekly_challenge", "Complete the weekly challenge", 5],
+  ];
+  for (const rule of pointRules) {
+    await db.run("INSERT OR IGNORE INTO point_rules (action_key, label, points) VALUES (?, ?, ?)", rule);
+  }
+
+  const { values: countRows } = await db.query("SELECT COUNT(*) AS count FROM reward_messages");
+  if (Number(countRows?.[0]?.count ?? 0) === 0) {
+    const groups: Array<[string, string, string[]]> = [
+      ["affirmation", "", AFFIRMATIONS], ["love_note", "", LOVE_NOTES],
+      ["end_of_day_good", "", END_OF_DAY_GOOD], ["end_of_day_tough", "", END_OF_DAY_TOUGH],
+      ["weekly_report_great", "", WEEKLY_REPORT_GREAT], ["weekly_report_ok", "", WEEKLY_REPORT_OK],
+      ["weekly_report_tough", "", WEEKLY_REPORT_TOUGH], ["weekly_challenge", "", WEEKLY_CHALLENGES],
+      ["challenge_completed", "", ["Challenge completed! Great work!"]],
+      ["redemption_pending", "", ['"{reward}" is now pending.']],
+      ["redemption_claimed", "", ['"{reward}" marked as completed.']],
+    ];
+    for (const [weekday, greeting] of DAY_GREETINGS) groups.push(["day_greeting", String(weekday), [greeting]]);
+    for (const [key, messages] of Object.entries(MILESTONE_MESSAGES)) groups.push(["milestone", key, messages]);
+    for (const [category, context, messages] of groups) {
+      for (const [index, message] of messages.entries()) {
+        await db.run(
+          "INSERT INTO reward_messages (category, context_key, text, order_index) VALUES (?, ?, ?, ?)",
+          [category, context, message, index]
+        );
+      }
+    }
+  }
 }
 
 async function runMigration1(db: SQLiteDBConnection): Promise<void> {

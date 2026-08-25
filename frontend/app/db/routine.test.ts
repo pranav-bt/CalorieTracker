@@ -42,7 +42,10 @@ describe("routine persistence", () => {
       query: jest.fn()
         .mockResolvedValueOnce({ values: [] })
         .mockResolvedValueOnce({ values: [{ id: 9, weekday: 1, slot: "breakfast", total_calories: 200, protein_g: 10, carbs_g: 30, fat_g: 4, fiber_g: 5 }] })
-        .mockResolvedValueOnce({ values: [{ name: "oats", quantity: 50, unit: "g", calories: 200, protein_g: 10, carbs_g: 30, fat_g: 4, fiber_g: 5 }] }),
+        .mockResolvedValueOnce({ values: [{ name: "oats", quantity: 50, unit: "g", calories: 200, protein_g: 10, carbs_g: 30, fat_g: 4, fiber_g: 5 }] })
+        .mockResolvedValueOnce({ values: [{ enabled: 1, motivations_enabled: 1, love_notes_enabled: 1, weekly_challenges_enabled: 1, points_enabled: 1, system_name: "Heart Points", point_name_singular: "point", point_name_plural: "points", weekly_points_goal: 15 }] })
+        .mockResolvedValueOnce({ values: [{ action_key: "log_meal", label: "Log a meal", points: 2, enabled: 1 }] })
+        .mockResolvedValueOnce({ values: [] }),
       run: jest.fn().mockResolvedValueOnce({ changes: { changes: 1, lastId: 12 } }).mockResolvedValue({ changes: { changes: 1 } }),
     };
     mockedGetDb.mockResolvedValue(db as never);

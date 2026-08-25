@@ -18,3 +18,4 @@ The development app can be installed beside the stable app. Data does not cross 
 | `v0.2.3-alpha` | `FitnessCompanion-0.2.3-alpha-dev.apk` | code 6, `0.2.3-alpha-dev` | `AF2E3D27EE446648044FC9781D0B6E7918E0DA367CD3109FE85388E2FFC6EBD3` |
 | `v0.3.0-alpha` | `FitnessCompanion-0.3.0-alpha-dev.apk` | code 7, `0.3.0-alpha-dev` | `996485A3F77B3FA026F14F19C02B34EBFE24699F60B3F95821D3334432DF04BA` |
 | `v0.3.1-alpha` | `FitnessCompanion-0.3.1-alpha-dev.apk` | code 8, `0.3.1-alpha-dev` | `41F25CAC96F4B8B0DB612F25D7E21718343A0B86886F4BA6EEFABE8AC74A35A7` |
+| `v0.4.0-alpha` | `FitnessCompanion-0.4.0-alpha-dev.apk` | code 9, `0.4.0-alpha-dev` | `E21F8F76F075D49601422E323F3CF73ACB53FFCCB6E9B4A93EB73239A3C9E64C` |

@@ -37,6 +37,12 @@ Installing a newer APK with the same debug signature should retain local data. U
 - [ ] Edit one source food after saving a planned dish; confirm the saved dish keeps its original nutrition snapshot until you explicitly resave it.
 - [ ] On Home, confirm today&apos;s planned meals appear but do not affect totals until **Log meal** is pressed; confirm a logged slot cannot be accidentally logged twice.
 - [ ] Delete the logged planned meal from History, return to Home, and confirm that planned slot can be logged again.
+- [ ] Open **More > Settings**, disable **Rewards and motivation**, restart the app, and confirm prompts, love notes, challenges, and new point awards stay off while prior balance/history remain stored.
+- [ ] Re-enable the master switch; independently toggle dashboard motivations, love notes, weekly challenges, and points and confirm each controls only its own feature.
+- [ ] Rename the reward section and point units, set a weekly point goal, then confirm Rewards shows the configured title, units, and weekly progress.
+- [ ] Change every app-detectable point action, log meals/reach a goal/complete a challenge as available, and confirm the configured awards and labels appear in recent activity.
+- [ ] Add, edit, and remove reward catalogue entries; redeem an affordable reward, mark it completed, and confirm catalogue edits do not alter its saved redemption history.
+- [ ] Edit several text groups, including a weekday greeting, daily motivation, weekly challenge, milestone, and redemption message; confirm the new text appears and an empty group displays nothing.
 - [ ] On Home, confirm each macro card shows the amount left (or over), plus logged and target values.
 - [ ] Generate a workout plan, log sets and recovery/pain data, then run workout recalibration.
 - [ ] Generate plans with balanced, strength, muscle-building, endurance, hybrid, and mobility styles; confirm the sessions and prescriptions visibly change.

@@ -11,7 +11,8 @@
 - `v0.2.3-alpha` identifies the workout-style, multilingual label-parsing, and security-maintenance checkpoint.
 - `v0.3.0-alpha` identifies the offline named-meal routine and explicit Home logging checkpoint.
 - `v0.3.1-alpha` identifies the named-meal hardening and automated-test bug-fix checkpoint.
-- The next planned development release is `0.4.0-alpha` for configurable rewards.
+- `v0.4.0-alpha` identifies the configurable offline rewards, motivation, challenges, and point-rules checkpoint.
+- The next planned development release is `0.5.0-alpha` for integrated AI assistance.
 - `fitness-companion` is retained as the original feature branch and historical remote branch.
 
 Promote a tested development checkpoint by merging it into `stable`, bumping Android's `versionCode` and `versionName`, building the stable channel, and creating a new annotated version tag.

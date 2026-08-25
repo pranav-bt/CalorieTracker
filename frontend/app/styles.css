@@ -2404,6 +2404,31 @@ button:disabled {
 .dangerButton { background: transparent; border: 1px solid #e3bcbc; color: var(--danger); }
 .routineEmpty { align-items: center; color: var(--muted); display: flex; gap: 8px; }
 
+.moreGrid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.moreCard { align-items: flex-start; color: inherit; display: flex; gap: 14px; text-decoration: none; }
+.moreCard svg { color: var(--accent); flex: 0 0 auto; }
+.moreCard h2 { font-size: 17px; margin: 0 0 4px; }
+.moreCard p { color: var(--muted); font-size: 13px; margin: 0; }
+
+.rewardSettingsSection { display: flex; flex-direction: column; gap: 16px; }
+.masterFeatureToggle { align-items: center; background: #eef7f3; border: 1px solid #b9d9cd; border-radius: 11px; display: flex; justify-content: space-between; padding: 14px; }
+.masterFeatureToggle span { display: flex; flex-direction: column; gap: 3px; }
+.masterFeatureToggle small { color: var(--muted); }
+.masterFeatureToggle input, .settingsToggleGrid input, .pointRuleRow input[type="checkbox"] { min-height: 22px; width: 22px; }
+.settingsToggleGrid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.settingsToggleGrid label { align-items: center; border: 1px solid var(--line); border-radius: 9px; display: flex; justify-content: space-between; padding: 11px 12px; }
+.pointRuleList, .catalogueEditor { display: flex; flex-direction: column; gap: 8px; }
+.pointRuleRow { align-items: center; display: grid; gap: 9px; grid-template-columns: minmax(0, 1fr) 110px 90px; }
+.pointRuleRow label { align-items: center; display: flex; font-size: 13px; gap: 6px; }
+.catalogueEditorRow { display: grid; gap: 9px; grid-template-columns: minmax(0, 1fr) 120px 40px; }
+.messagePoolEditor { min-height: 210px; resize: vertical; width: 100%; }
+.disabledRewardsNotice { align-items: center; display: flex; gap: 14px; }
+.disabledRewardsNotice > div { flex: 1; }
+.disabledRewardsNotice h2 { font-size: 17px; margin: 0; }
+.featureDisabled { opacity: .55; }
+.weeklyPointsGoal { display: flex; flex-direction: column; gap: 10px; }
+.weeklyPointsGoal > div:first-child { align-items: center; display: flex; justify-content: space-between; }
+
 @media (max-width: 760px) {
   .inventoryReminder {
     align-items: flex-start;
@@ -2590,6 +2615,12 @@ button:disabled {
   }
 
   .routineSlotGrid { grid-template-columns: 1fr; }
+  .moreGrid { grid-template-columns: 1fr; }
+  .settingsToggleGrid { grid-template-columns: 1fr; }
+  .pointRuleRow { grid-template-columns: minmax(0, 1fr) 80px; }
+  .pointRuleRow label { grid-column: 1 / 3; }
+  .catalogueEditorRow { grid-template-columns: minmax(0, 1fr) 88px 40px; }
+  .disabledRewardsNotice { align-items: flex-start; flex-wrap: wrap; }
   .routineDaySummary { align-items: flex-start; flex-direction: column; gap: 10px; }
   .routineDaySummary > div:last-child { flex-wrap: wrap; }
   .routineIngredientRow { grid-template-columns: minmax(0, 1fr) 82px 44px 40px; }

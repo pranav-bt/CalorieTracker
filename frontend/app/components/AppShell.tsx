@@ -13,9 +13,11 @@ import {
   Target,
   PackageOpen,
   Dumbbell,
+  Gift,
+  Menu,
 } from "lucide-react";
 import { LoveNotePopup } from "./LoveNotePopup";
-import { getLoveNote } from "../db";
+import { getConfiguredLoveNote } from "../db/rewards";
 import { APP_DISPLAY_NAME, IS_DEVELOPMENT_BUILD } from "../appConfig";
 
 const navItems = [
@@ -27,6 +29,16 @@ const navItems = [
   { href: "/routine", label: "Routine", shortLabel: "Meals", icon: CalendarDays },
   { href: "/workout", label: "Workout", shortLabel: "Train", icon: Dumbbell },
   { href: "/history", label: "History", shortLabel: "History", icon: CalendarDays },
+  { href: "/heart-points", label: "Rewards", shortLabel: "Rewards", icon: Gift },
+  { href: "/settings", label: "Settings", shortLabel: "Settings", icon: Settings },
+];
+
+const mobileNavItems = [
+  { href: "/", shortLabel: "Home", icon: Home },
+  { href: "/plan", shortLabel: "Plan", icon: Target },
+  { href: "/routine", shortLabel: "Meals", icon: CalendarDays },
+  { href: "/workout", shortLabel: "Train", icon: Dumbbell },
+  { href: "/more", shortLabel: "More", icon: Menu },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -34,9 +46,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [loveNote, setLoveNote] = useState<string | null>(null);
 
   useEffect(() => {
-    const text = getLoveNote();
-    const timer = setTimeout(() => setLoveNote(text), 45_000);
-    return () => clearTimeout(timer);
+    let active = true;
+    const timer = setTimeout(() => {
+      getConfiguredLoveNote().then((text) => { if (active && text) setLoveNote(text); }).catch(() => undefined);
+    }, 45_000);
+    return () => { active = false; clearTimeout(timer); };
   }, []);
 
   return (
@@ -67,9 +81,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
       <main className="pageShell">{children}</main>
       <nav className="mobileNav">
-        {navItems.map((item) => {
+        {mobileNavItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href === "/more" && ["/foods", "/inventory", "/recipes", "/history", "/heart-points", "/settings", "/goals"].includes(pathname));
           return (
             <Link
               aria-current={isActive ? "page" : undefined}

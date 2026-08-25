@@ -36,3 +36,14 @@ Exercise-progress charts are derived from completed `workout_sets`; no duplicate
 ## Settings
 
 The existing `settings` singleton remains for compatibility. `calorie_distribution_mode` distinguishes fixed daily targets from flexible weekly redistribution.
+
+## Configurable rewards
+
+Schema version 8 keeps reward behavior local and editable:
+
+- `reward_preferences` stores the master switch, per-feature switches, point terminology, section name, and weekly point goal.
+- `point_rules` stores the enabled state, display label, and award for each action the app can detect.
+- `reward_messages` stores weekday greetings, motivations, love notes, reports, challenges, milestone text, and redemption messages by category/context.
+- `rewards_catalogue` stores editable reward names and costs. `redemptions` remain immutable snapshots, so later catalogue edits do not rewrite history.
+
+Disabling rewards does not delete earned points, catalogue configuration, or redemption history. It hides incentive surfaces and prevents new automatic awards until re-enabled.

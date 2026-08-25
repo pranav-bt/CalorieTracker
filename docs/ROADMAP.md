@@ -17,7 +17,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 - Stable: `stable` branch, `dev.pranav.fitnesscompanion`, current release `v0.1.1-alpha`.
 - Development: `development` branch, `dev.pranav.fitnesscompanion.dev`, visibly labeled `Fitness Companion Dev`.
-- Current tagged development checkpoint: `v0.3.1-alpha` (named-meal hardening and automated-test bug fixes).
+- Current tagged development checkpoint: `v0.4.0-alpha` (configurable offline rewards, prompts, and point rules).
 - Generated APKs are kept locally in `releases/`; see `docs/BUILD_CHANNELS.md`.
 
 ## Current sprint: private alpha foundation
@@ -70,7 +70,9 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 ### Version 0.4.0
 
-- [ ] Rewards and points as an independent section.
+- [x] Rewards and points as an independent section.
+- [x] On-device master and per-feature switches for rewards, motivations, love notes, weekly challenges, and points.
+- [x] On-device editors for reward names/costs, point actions, weekly point goals, point terminology, and all incentive text pools.
 
 ### Version 0.5.0
 
