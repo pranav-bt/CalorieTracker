@@ -156,6 +156,7 @@ export type UserProfile = {
   workout_session_minutes: number;
   flex_days_per_week: number;
   flex_day_weekday: number | null;
+  flex_day_calorie_target: number | null;
   dietary_preferences: string[];
   available_equipment: string[];
   injuries_or_limitations: string[];
@@ -214,6 +215,18 @@ export type MacroCalculationInput = {
   preferred_workout_days: number[];
   flex_days_per_week: number;
   flex_day_weekday: number | null;
+  flex_day_calorie_target: number | null;
+};
+
+export type ExerciseProgressPoint = {
+  date: string;
+  exercise_name: string;
+  tracking_type: ExerciseTrackingType;
+  max_load_kg: number | null;
+  total_volume_kg: number;
+  total_reps: number;
+  duration_seconds: number;
+  distance_meters: number;
 };
 
 export type MacroCalculationResult = NutritionTarget & {

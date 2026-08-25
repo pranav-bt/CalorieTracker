@@ -87,6 +87,9 @@ function validateInput(input: MacroCalculationInput): void {
   if (input.flex_days_per_week < 0 || input.flex_days_per_week > 1) {
     throw new Error("The private alpha supports up to one flex day each week.");
   }
+  if (input.flex_day_calorie_target !== null && input.flex_days_per_week !== 1) {
+    throw new Error("Enable a flex day before setting its calorie target.");
+  }
   if (input.target_date && daysBetween(input.as_of_date, input.target_date) <= 0) {
     throw new Error("Target date must be in the future.");
   }
@@ -139,16 +142,33 @@ function distributeWeek(input: MacroCalculationInput, daily: NutritionTarget): N
       : DEFAULT_WORKOUT_DAYS[input.workout_days_per_week]
   );
   const flexDay = input.flex_days_per_week === 1 ? (input.flex_day_weekday ?? 5) : null;
+  const weeklyBudget = daily.calories * 7;
+  const customFlexCalories = flexDay !== null ? input.flex_day_calorie_target : null;
+  if (customFlexCalories !== null) {
+    if (!Number.isFinite(customFlexCalories) || customFlexCalories < 1200) {
+      throw new Error("The flex-day target must be at least 1200 kcal.");
+    }
+    if (customFlexCalories > weeklyBudget - 1200 * 6) {
+      throw new Error("The flex-day target leaves fewer than 1200 kcal for another day.");
+    }
+  }
   const weights = Array.from({ length: 7 }, (_, weekday) => {
     let weight = workoutDays.has(weekday) ? 1.04 : 1;
-    if (weekday === flexDay) weight += 0.1;
+    if (weekday === flexDay && customFlexCalories === null) weight += 0.1;
     return weight;
   });
-  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
-  const weeklyBudget = daily.calories * 7;
-  const caloriesByDay = weights.map((weight) => roundTo((weeklyBudget * weight) / weightTotal, 5));
+  const distributableBudget = weeklyBudget - (customFlexCalories ?? 0);
+  const weightTotal = weights.reduce((sum, weight, weekday) => sum + (weekday === flexDay && customFlexCalories !== null ? 0 : weight), 0);
+  const caloriesByDay = weights.map((weight, weekday) => (
+    weekday === flexDay && customFlexCalories !== null
+      ? customFlexCalories
+      : roundTo((distributableBudget * weight) / weightTotal, 5)
+  ));
   const roundingDifference = weeklyBudget - caloriesByDay.reduce((sum, calories) => sum + calories, 0);
-  caloriesByDay[flexDay ?? 6] += roundingDifference;
+  const roundingDay = customFlexCalories !== null
+    ? [6, 5, 4, 3, 2, 1, 0].find((weekday) => weekday !== flexDay)!
+    : (flexDay ?? 6);
+  caloriesByDay[roundingDay] += roundingDifference;
 
   return caloriesByDay.map((calories, weekday) => {
     const targets = macrosForCalories(calories, input.weight_kg, input.primary_goal);

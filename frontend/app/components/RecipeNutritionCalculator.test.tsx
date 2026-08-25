@@ -29,7 +29,7 @@ const foods: Food[] = [
 ];
 
 const inventory: InventoryItem[] = [
-  { id: 20, food_id: 1, name: "chicken breast", quantity: 300, unit: "g", location: "fridge", expires_on: "2026-08-20", low_stock_quantity: null, updated_at: "2026-08-18" },
+  { id: 20, food_id: 1, name: "chicken breast", quantity: 300, unit: "g", location: "fridge", expires_on: "2099-08-20", low_stock_quantity: null, updated_at: "2026-08-18" },
   { id: 21, food_id: 2, name: "rice", quantity: 150, unit: "g", location: "pantry", expires_on: null, low_stock_quantity: null, updated_at: "2026-08-18" },
 ];
 
@@ -112,8 +112,9 @@ describe("RecipeNutritionCalculator", () => {
     render(<RecipeNutritionCalculator isOpen onClose={jest.fn()} onCommitted={onCommitted} />);
 
     await user.selectOptions(await screen.findByLabelText("Recipe ingredient 1"), "1");
-    expect(screen.getByRole("checkbox", { name: /deduct matching stock/i })).not.toBeChecked();
-    await user.click(screen.getByRole("checkbox", { name: /deduct matching stock/i }));
+    const deductionCheckbox = await screen.findByRole("checkbox", { name: /deduct matching stock/i });
+    expect(deductionCheckbox).not.toBeChecked();
+    await user.click(deductionCheckbox);
     await user.click(screen.getByRole("button", { name: /commit to today/i }));
 
     await waitFor(() => expect(mockedApplyInventoryDeductions).toHaveBeenCalledWith([

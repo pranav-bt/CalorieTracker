@@ -26,6 +26,7 @@ import type {
   UserProfile,
 } from "../types";
 import { phaseImpact, phaseLabel, recommendPhase } from "../domain/goalGuidance";
+import { BodyProgressCharts } from "../components/BodyProgressCharts";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -53,6 +54,7 @@ type FormState = {
   sessionMinutes: string;
   flexDay: boolean;
   flexWeekday: number;
+  flexCalories: string;
   dietaryPreferences: string;
   equipment: string;
   limitations: string;
@@ -82,6 +84,7 @@ const INITIAL_FORM: FormState = {
   sessionMinutes: "45",
   flexDay: false,
   flexWeekday: 5,
+  flexCalories: "",
   dietaryPreferences: "",
   equipment: "",
   limitations: "",
@@ -92,6 +95,7 @@ export default function PlanPage() {
   const [plans, setPlans] = useState<StoredNutritionPlan[]>([]);
   const [activePlan, setActivePlan] = useState<StoredNutritionPlan | null>(null);
   const [report, setReport] = useState<RecalibrationReport | null>(null);
+  const [measurements, setMeasurements] = useState<import("../types").BodyMeasurement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -111,7 +115,7 @@ export default function PlanPage() {
   async function load() {
     const [profile, measurements, savedPlans, latestReport, draft] = await Promise.all([
       getUserProfile(),
-      getBodyMeasurements(1),
+      getBodyMeasurements(60),
       getNutritionPlans(3),
       getLatestRecalibrationReport(),
       getCalculatorDraft<FormState>(),
@@ -132,6 +136,7 @@ export default function PlanPage() {
       };
     });
     setPlans(savedPlans);
+    setMeasurements(measurements);
     setActivePlan(savedPlans.find((plan) => plan.is_active) ?? savedPlans[0] ?? null);
     setReport(latestReport);
     draftReadyRef.current = true;
@@ -343,6 +348,12 @@ export default function PlanPage() {
           <label><input checked={form.flexDay} onChange={(e) => update("flexDay", e.target.checked)} type="checkbox" />Include one flex day</label>
           {form.flexDay && <select aria-label="Flex day" value={form.flexWeekday} onChange={(e) => update("flexWeekday", Number(e.target.value))}>{DAYS.map((day, index) => <option key={day} value={index}>{day}</option>)}</select>}
         </div>
+        {form.flexDay && (
+          <Field label="Flex-day calories (optional)">
+            <NumberInput required={false} min="1200" step="25" value={form.flexCalories} onChange={(value) => update("flexCalories", value)} />
+            <small className="fieldHint">Leave blank for automatic distribution. A custom target redistributes calories across the other days while preserving the weekly total.</small>
+          </Field>
+        )}
 
         <details className="formDetails">
           <summary>Diet, equipment, and limitations</summary>
@@ -360,6 +371,7 @@ export default function PlanPage() {
       </form>
 
       {activePlan && <PlanResult plan={activePlan} />}
+      <BodyProgressCharts measurements={measurements} />
       {report && <RecalibrationCard report={report} />}
 
       {plans.length > 0 && (
@@ -428,6 +440,7 @@ function validate(form: FormState): string | null {
   const workoutDays = Number(form.workoutDays);
   if (!Number.isInteger(workoutDays) || workoutDays < 0 || workoutDays > 7) return "Workout days must be between 0 and 7.";
   if (form.preferredWorkoutDays.length !== workoutDays) return `Select exactly ${workoutDays} preferred workout day${workoutDays === 1 ? "" : "s"}.`;
+  if (form.flexDay && form.flexCalories && Number(form.flexCalories) < 1200) return "Flex-day calories must be at least 1200.";
   return null;
 }
 
@@ -450,6 +463,7 @@ function formToProfile(form: FormState): UserProfile {
     workout_session_minutes: Number(form.sessionMinutes),
     flex_days_per_week: form.flexDay ? 1 : 0,
     flex_day_weekday: form.flexDay ? form.flexWeekday : null,
+    flex_day_calorie_target: form.flexDay ? optionalNumber(form.flexCalories) : null,
     dietary_preferences: csv(form.dietaryPreferences),
     available_equipment: csv(form.equipment),
     injuries_or_limitations: csv(form.limitations),
@@ -476,6 +490,7 @@ function profileToForm(profile: UserProfile, measurement: import("../types").Bod
     sessionMinutes: String(profile.workout_session_minutes),
     flexDay: profile.flex_days_per_week > 0,
     flexWeekday: profile.flex_day_weekday ?? 5,
+    flexCalories: profile.flex_day_calorie_target === null ? "" : String(profile.flex_day_calorie_target),
     dietaryPreferences: profile.dietary_preferences.join(", "),
     equipment: profile.available_equipment.join(", "),
     limitations: profile.injuries_or_limitations.join(", "),

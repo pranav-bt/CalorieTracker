@@ -21,6 +21,8 @@ Installing a newer APK with the same debug signature should retain local data. U
 - [ ] Switch between fixed-daily and flexible-weekly calorie modes.
 - [ ] Discard the active nutrition plan; confirm the previous plan activates, Undo works, and manual calories take over when no plan remains.
 - [ ] Add weight/body measurements and run recalibration; check that the report explains what changed or why no change was made.
+- [ ] Add at least two body check-ins; confirm weight and each available body-measurement chart can be selected and shows the correct dates and values.
+- [ ] Enable a flex day, enter an exact calorie target, create the plan, and confirm that day uses the exact value while the seven-day total remains unchanged.
 - [ ] Add, edit, and remove an inventory item.
 - [ ] Add one expired item and items expiring today, within three days, and later; confirm Home and Inventory distinguish **Expired**, **Expires today**, and **Use soon** correctly.
 - [ ] Open Recipes, set preferences and an avoid/allergy item, preview the prompt, and confirm expired or zero-stock ingredients are excluded.
@@ -31,6 +33,7 @@ Installing a newer APK with the same debug signature should retain local data. U
 - [ ] In the recipe calculator choose **Today&apos;s preplanned routine**, confirm the before-recipe remainder matches Home, and confirm the after-recipe preview shows amounts left or over for calories and every planned macro.
 - [ ] On Home, confirm each macro card shows the amount left (or over), plus logged and target values.
 - [ ] Generate a workout plan, log sets and recovery/pain data, then run workout recalibration.
+- [ ] Log the same strength and cardio exercise twice; confirm their progress charts offer the appropriate load/volume/reps or duration/distance metrics.
 - [ ] Confirm workout creation/logging has no transaction error; restore and discard plans from workout history.
 - [ ] Export a JSON backup from History and save it somewhere outside the app.
 - [ ] Add a disposable record, import the backup, and confirm the disposable record disappears while prior data returns.

@@ -17,7 +17,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 - Stable: `stable` branch, `dev.pranav.fitnesscompanion`, current release `v0.1.1-alpha`.
 - Development: `development` branch, `dev.pranav.fitnesscompanion.dev`, visibly labeled `Fitness Companion Dev`.
-- Current tagged development checkpoint: `v0.2.1-alpha` (Recipes, remaining-routine guidance, inventory expiry alerts, and confirmed recipe deductions).
+- Current tagged development checkpoint: `v0.2.2-alpha` (exercise and body progress charts, plus configurable flex-day calorie targets).
 - Generated APKs are kept locally in `releases/`; see `docs/BUILD_CHANNELS.md`.
 
 ## Current sprint: private alpha foundation
@@ -46,20 +46,46 @@ This file is the living scope record for the Android private alpha. Update it wh
 - [x] Replace technical goal selection with physique outcomes and an explained first-phase recommendation.
 - [ ] Complete the physical-device smoke test in `docs/ALPHA_TESTING.md`.
 
-## Next after the offline alpha
+## Version roadmap
+
+### Version 0.2.2
+
+- [x] Exercise-progress charts.
+- [x] Body-weight and measurement charts.
+- [x] Configurable flex-day calorie targets.
+
+### Version 0.2.3
+
+- [ ] Expanded exercise templates and workout styles.
+- [ ] Additional nutrition-label OCR languages.
+- [ ] Dependency and security maintenance.
+
+### Version 0.3.0
+
+- [ ] Named meal planning with breakfast, lunch, and dinner slots and planned dishes.
+
+### Version 0.3.1
+
+- [ ] Bug fixes found during automated and physical-device testing.
+
+### Version 0.4.0
+
+- [ ] Rewards and points as an independent section.
+
+### Version 0.5.0
+
+- [ ] Integrated AI recipe assistant.
+- [ ] AI-assisted workout-plan explanations and revisions, with deterministic validation.
+
+## Completed post-foundation features
 
 - [x] Pantry-aware recipe prompt export to the Android share sheet for ChatGPT or Claude.
 - [x] Local recipe calorie/macro estimator using food-database quantities, with explicit commit-to-today or discard.
 - [x] Connect recipes to today&apos;s remaining routine target and show calorie/macro gaps before and after a proposed recipe.
-- [ ] Optional integrated recipe assistant through a provider-neutral serverless proxy.
-- [ ] AI-assisted workout-plan explanations and revisions, with deterministic validation.
 - [x] In-app expiration reminders and optional confirmed inventory deductions when committing recipes.
-- [ ] Exercise and body-measurement charts.
-- [ ] Accessibility review for comfortable private use.
 
 ## Explicitly deferred
 
-- [ ] Rewards and points as an independent section.
 - [ ] Shared household inventory and synchronization.
 - [ ] Accounts or mandatory sign-in.
 - [ ] Barcode scanning.
@@ -72,9 +98,8 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 - Final product name and visual identity (working name: Fitness Companion).
 - Metric-only entry or simultaneous metric/imperial support.
-- Whether later OCR releases need labels beyond English/Latin script.
-- Whether flex days receive a fixed percentage uplift or a user-entered target.
-- Which exercise catalogue and workout styles ship in the first template library.
+- Which additional OCR languages ship in version 0.2.3.
+- Which exercise catalogue and workout styles ship in version 0.2.3.
 - Whether private-alpha AI uses prompt sharing, a small shared API budget, or per-user API keys.
 
 ## Discovered gaps and safeguards

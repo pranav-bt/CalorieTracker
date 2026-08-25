@@ -72,6 +72,7 @@ export async function getUserProfile(): Promise<UserProfile | null> {
     workout_session_minutes: row.workout_session_minutes as number,
     flex_days_per_week: row.flex_days_per_week as number,
     flex_day_weekday: row.flex_day_weekday as number | null,
+    flex_day_calorie_target: row.flex_day_calorie_target as number | null,
     dietary_preferences: parseStringArray(row.dietary_preferences_json),
     available_equipment: parseStringArray(row.available_equipment_json),
     injuries_or_limitations: parseStringArray(row.limitations_json),
@@ -95,7 +96,7 @@ async function writeUserProfile(
        physique_goal=?, current_state=?,
        target_weight_kg=?, target_date=?, event_name=?, event_date=?, workout_days_per_week=?,
        preferred_workout_days_json=?, workout_session_minutes=?, flex_days_per_week=?,
-       flex_day_weekday=?, dietary_preferences_json=?, available_equipment_json=?,
+       flex_day_weekday=?, flex_day_calorie_target=?, dietary_preferences_json=?, available_equipment_json=?,
        limitations_json=?, updated_at=datetime('now')
      WHERE id=1`,
     [
@@ -115,6 +116,7 @@ async function writeUserProfile(
       profile.workout_session_minutes,
       profile.flex_days_per_week,
       profile.flex_day_weekday,
+      profile.flex_day_calorie_target,
       JSON.stringify(profile.dietary_preferences),
       JSON.stringify(profile.available_equipment),
       JSON.stringify(profile.injuries_or_limitations),
@@ -199,6 +201,7 @@ export async function calculateAndSaveNutritionPlan(
     preferred_workout_days: profile.preferred_workout_days,
     flex_days_per_week: profile.flex_days_per_week,
     flex_day_weekday: profile.flex_day_weekday,
+    flex_day_calorie_target: profile.flex_day_calorie_target,
   } as const;
   let result = calculateNutritionPlan(calculationInput);
 

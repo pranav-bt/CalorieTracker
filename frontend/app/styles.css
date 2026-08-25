@@ -11,6 +11,102 @@
   --gold: #f0b84f;
 }
 
+.chartControls {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.chartMetricPicker {
+  margin-bottom: 14px;
+  max-width: 320px;
+}
+
+.progressChart {
+  min-width: 0;
+}
+
+.progressChart svg {
+  background: #fbfcfa;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: block;
+  height: auto;
+  max-height: 280px;
+  width: 100%;
+}
+
+.chartSummary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.chartGridLine {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chartLine {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.chartPoint {
+  fill: var(--panel);
+  stroke: var(--accent-dark);
+  stroke-width: 3;
+}
+
+.chartAxisText,
+.chartDateLabel {
+  fill: var(--muted);
+  font-size: 12px;
+  text-anchor: end;
+}
+
+.chartDateLabel {
+  text-anchor: start;
+}
+
+.chartDateLabelEnd {
+  text-anchor: end;
+}
+
+.chartDataDetails {
+  margin-top: 10px;
+}
+
+.chartDataDetails table {
+  border-collapse: collapse;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.chartDataDetails th,
+.chartDataDetails td {
+  border-bottom: 1px solid var(--line);
+  padding: 7px;
+  text-align: left;
+}
+
+.chartDataDetails th:last-child,
+.chartDataDetails td:last-child {
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .chartControls {
+    grid-template-columns: 1fr;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

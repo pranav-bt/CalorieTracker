@@ -12,7 +12,7 @@ The SQLite database is the source of truth for the Android app. Values copied in
 
 ## Profile and recalibration
 
-- `user_profile`: current non-historical preferences and constraints.
+- `user_profile`: current non-historical preferences and constraints, including an optional exact flex-day calorie target.
 - `body_measurements`: time series of weight and optional body measurements.
 - `recalibration_reports`: immutable evidence and change records that link old and new plans.
 
@@ -27,6 +27,8 @@ The UI exposes the latest three plans for quick restoration, while the database 
 - `workout_exercise_logs`: exercise-level result and feedback.
 - `workout_sets`: individual set data such as repetitions, load, RIR, RPE, duration, and distance.
 
+Exercise-progress charts are derived from completed `workout_sets`; no duplicate chart data is stored.
+
 ## Pantry
 
 - `inventory_items`: locally stocked ingredients with quantity, unit, location, expiry, and low-stock threshold.
@@ -34,4 +36,3 @@ The UI exposes the latest three plans for quick restoration, while the database 
 ## Settings
 
 The existing `settings` singleton remains for compatibility. `calorie_distribution_mode` distinguishes fixed daily targets from flexible weekly redistribution.
-

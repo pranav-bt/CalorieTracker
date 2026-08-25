@@ -1,7 +1,7 @@
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from "@capacitor-community/sqlite";
 
 export const DB_NAME = "fitness_companion";
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 
 const sqlite = new SQLiteConnection(CapacitorSQLite);
 let _db: SQLiteDBConnection | null = null;

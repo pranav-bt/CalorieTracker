@@ -4,6 +4,7 @@ import { Capacitor } from "@capacitor/core";
 import { generateWorkoutPlan } from "../domain/workouts";
 import type {
   RecalibrationChange,
+  ExerciseProgressPoint,
   UserProfile,
   WorkoutPlan,
   WorkoutPlanDay,
@@ -255,6 +256,37 @@ export async function getRecentWorkoutSessions(limit = 12): Promise<WorkoutSessi
     recovery_rating: row.recovery_rating as number | null,
     pain_reported: Boolean(row.pain_reported),
     completed_sets: row.completed_sets as number,
+  }));
+}
+
+export async function getExerciseProgress(limitDays = 180): Promise<ExerciseProgressPoint[]> {
+  requireAndroid();
+  const db = await getDb();
+  const { values } = await db.query(
+    `SELECT sessions.scheduled_for AS date, logs.exercise_name, exercises.tracking_type,
+            MAX(CASE WHEN sets.completed=1 THEN sets.load_kg END) AS max_load_kg,
+            COALESCE(SUM(CASE WHEN sets.completed=1 THEN COALESCE(sets.load_kg, 0) * COALESCE(sets.reps, 0) ELSE 0 END), 0) AS total_volume_kg,
+            COALESCE(SUM(CASE WHEN sets.completed=1 THEN COALESCE(sets.reps, 0) ELSE 0 END), 0) AS total_reps,
+            COALESCE(SUM(CASE WHEN sets.completed=1 THEN COALESCE(sets.duration_seconds, 0) ELSE 0 END), 0) AS duration_seconds,
+            COALESCE(SUM(CASE WHEN sets.completed=1 THEN COALESCE(sets.distance_meters, 0) ELSE 0 END), 0) AS distance_meters
+     FROM workout_exercise_logs logs
+     JOIN workout_sessions sessions ON sessions.id=logs.session_id
+     LEFT JOIN workout_plan_exercises exercises ON exercises.id=logs.plan_exercise_id
+     JOIN workout_sets sets ON sets.exercise_log_id=logs.id
+     WHERE sessions.status='completed' AND sessions.scheduled_for>=date('now', ?)
+     GROUP BY sessions.scheduled_for, lower(logs.exercise_name), logs.exercise_name, exercises.tracking_type
+     ORDER BY sessions.scheduled_for, logs.exercise_name`,
+    [`-${Math.max(1, Math.round(limitDays))} days`]
+  );
+  return (values ?? []).map((row) => ({
+    date: row.date as string,
+    exercise_name: row.exercise_name as string,
+    tracking_type: (row.tracking_type as ExerciseProgressPoint["tracking_type"] | null) ?? "strength",
+    max_load_kg: row.max_load_kg === null ? null : Number(row.max_load_kg),
+    total_volume_kg: Number(row.total_volume_kg),
+    total_reps: Number(row.total_reps),
+    duration_seconds: Number(row.duration_seconds),
+    distance_meters: Number(row.distance_meters),
   }));
 }
 

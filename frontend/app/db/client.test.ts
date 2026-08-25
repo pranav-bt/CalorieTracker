@@ -26,4 +26,16 @@ describe("inTransaction", () => {
     expect(db.commitTransaction).not.toHaveBeenCalled();
     expect(db.rollbackTransaction).toHaveBeenCalledTimes(1);
   });
+
+  it("does not issue an invalid rollback when the native transaction is already closed", async () => {
+    const db = fakeDb(false);
+    await expect(inTransaction(db, async () => { throw new Error("write failed"); })).rejects.toThrow("write failed");
+    expect(db.rollbackTransaction).not.toHaveBeenCalled();
+  });
+
+  it("preserves an operation error even when checking transaction state also fails", async () => {
+    const db = fakeDb();
+    jest.mocked(db.isTransactionActive).mockRejectedValue(new Error("plugin state unavailable"));
+    await expect(inTransaction(db, async () => { throw new Error("original write error"); })).rejects.toThrow("original write error");
+  });
 });

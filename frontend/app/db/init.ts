@@ -2,7 +2,7 @@ import { SQLiteDBConnection } from "@capacitor-community/sqlite";
 import { getDb } from "./client";
 import { REWARDS } from "./messages";
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 export async function initDb(): Promise<void> {
   const db = await getDb();
@@ -30,11 +30,19 @@ export async function initDb(): Promise<void> {
     await runMigration4(db);
     await setSchemaVersion(db, 4);
   }
+  if (currentVersion < 5) {
+    await runMigration5(db);
+    await setSchemaVersion(db, 5);
+  }
   await db.execute(`PRAGMA user_version = ${SCHEMA_VERSION};`, false);
 }
 
 async function setSchemaVersion(db: SQLiteDBConnection, version: number): Promise<void> {
   await db.run("INSERT OR REPLACE INTO db_meta (key, value) VALUES ('schema_version', ?)", [String(version)]);
+}
+
+async function runMigration5(db: SQLiteDBConnection): Promise<void> {
+  await addColumnIfMissing(db, "user_profile", "flex_day_calorie_target", "REAL");
 }
 
 async function runMigration1(db: SQLiteDBConnection): Promise<void> {

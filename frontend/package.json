@@ -2,8 +2,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "lint": "tsc --noEmit",
+    "lint": "tsc --noEmit --incremental false",
     "test": "jest",
+    "test:ci": "jest --runInBand --coverage",
     "test:watch": "jest --watch"
   },
   "dependencies": {

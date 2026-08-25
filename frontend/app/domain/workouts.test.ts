@@ -7,6 +7,7 @@ const profile: UserProfile = {
   target_date: null, event_name: "", event_date: null, workout_days_per_week: 3,
   preferred_workout_days: [0, 2, 4], workout_session_minutes: 45, flex_days_per_week: 0,
   flex_day_weekday: null, dietary_preferences: [], available_equipment: ["dumbbells"],
+  flex_day_calorie_target: null,
   injuries_or_limitations: [],
 };
 

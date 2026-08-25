@@ -3,12 +3,14 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Activity, Check, Dumbbell, History, RefreshCw, RotateCcw, Save, Trash2 } from "lucide-react";
 import { getUserProfile } from "../db/plans";
+import { ExerciseProgressCharts } from "../components/ExerciseProgressCharts";
 import {
   discardWorkoutPlan,
   generateAndSaveWorkoutPlan,
   getActiveWorkoutPlan,
   getLatestWorkoutRecalibrationReport,
   getRecentWorkoutSessions,
+  getExerciseProgress,
   getWorkoutPlans,
   recalibrateWorkoutPlan,
   restoreWorkoutPlan,
@@ -17,6 +19,7 @@ import {
 } from "../db/workouts";
 import type {
   UserProfile,
+  ExerciseProgressPoint,
   WorkoutPlan,
   WorkoutPlanDay,
   WorkoutRecalibrationReport,
@@ -35,6 +38,7 @@ export default function WorkoutPage() {
   const [plans, setPlans] = useState<WorkoutPlan[]>([]);
   const [sessions, setSessions] = useState<WorkoutSessionSummary[]>([]);
   const [report, setReport] = useState<WorkoutRecalibrationReport | null>(null);
+  const [progress, setProgress] = useState<ExerciseProgressPoint[]>([]);
   const [loggingDay, setLoggingDay] = useState<WorkoutPlanDay | null>(null);
   const [isBusy, setIsBusy] = useState(true);
   const [message, setMessage] = useState("");
@@ -42,10 +46,10 @@ export default function WorkoutPage() {
   const [lastDiscardedPlan, setLastDiscardedPlan] = useState<{ id: number; wasActive: boolean } | null>(null);
 
   async function load() {
-    const [savedProfile, activePlan, savedPlans, recentSessions, latestReport] = await Promise.all([
-      getUserProfile(), getActiveWorkoutPlan(), getWorkoutPlans(3), getRecentWorkoutSessions(), getLatestWorkoutRecalibrationReport(),
+    const [savedProfile, activePlan, savedPlans, recentSessions, latestReport, exerciseProgress] = await Promise.all([
+      getUserProfile(), getActiveWorkoutPlan(), getWorkoutPlans(3), getRecentWorkoutSessions(), getLatestWorkoutRecalibrationReport(), getExerciseProgress(),
     ]);
-    setProfile(savedProfile); setPlan(activePlan); setPlans(savedPlans); setSessions(recentSessions); setReport(latestReport); setIsBusy(false);
+    setProfile(savedProfile); setPlan(activePlan); setPlans(savedPlans); setSessions(recentSessions); setReport(latestReport); setProgress(exerciseProgress); setIsBusy(false);
   }
 
   useEffect(() => { load().catch((caught) => { setError(caught instanceof Error ? caught.message : "Could not load workouts."); setIsBusy(false); }); }, []);
@@ -116,6 +120,7 @@ export default function WorkoutPage() {
 
       {loggingDay && <WorkoutLogger day={loggingDay} onCancel={() => setLoggingDay(null)} onSaved={async () => { setLoggingDay(null); setMessage("Workout saved."); await load(); }} />}
       {report && <WorkoutReport report={report} />}
+      <ExerciseProgressCharts progress={progress} />
       {plans.length > 0 && <section className="panel"><div className="panelHeader"><h2>Last three workout plans</h2><History size={18} /></div><ul className="planHistory">{plans.map((savedPlan) => <li key={savedPlan.id}><div><strong>{savedPlan.name}</strong><small>{new Date(savedPlan.created_at).toLocaleString()} · {savedPlan.source.replace("_", " ")}</small></div><div className="historyActions">{savedPlan.is_active ? <span className="activePill">Active</span> : <button className="secondaryButton" onClick={() => restore(savedPlan.id)} type="button"><RotateCcw size={15} />Restore</button>}<button aria-label="Discard workout plan" className="iconButton danger" onClick={() => discard(savedPlan.id)} type="button"><Trash2 size={15} /></button></div></li>)}</ul></section>}
       {sessions.length > 0 && <section className="panel"><div className="panelHeader"><h2>Recent workouts</h2><Check size={18} /></div><ul className="sessionList">{sessions.map((session) => <li key={session.id}><div><strong>{session.title}</strong><small>{session.scheduled_for} · {session.completed_sets} sets</small></div><div className="sessionSignals">{session.energy_rating && <span>Energy {session.energy_rating}/5</span>}{session.recovery_rating && <span>Recovery {session.recovery_rating}/5</span>}{session.pain_reported && <span className="painSignal">Pain noted</span>}</div></li>)}</ul></section>}
     </section>
