@@ -2387,6 +2387,7 @@ button:disabled {
 }
 
 .routineEditor { display: flex; flex-direction: column; gap: 14px; }
+.warningNotice { background: #fff8e7; border: 1px solid #ead39a; border-radius: 9px; color: #765b17; margin: 0; padding: 10px 12px; }
 .routineIngredientRows { display: flex; flex-direction: column; gap: 8px; }
 .routineIngredientRow { align-items: center; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) 110px 55px 40px; }
 .routineIngredientRow > span { color: var(--muted); font-size: 13px; }

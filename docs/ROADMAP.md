@@ -17,7 +17,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 - Stable: `stable` branch, `dev.pranav.fitnesscompanion`, current release `v0.1.1-alpha`.
 - Development: `development` branch, `dev.pranav.fitnesscompanion.dev`, visibly labeled `Fitness Companion Dev`.
-- Current tagged development checkpoint: `v0.3.0-alpha` (offline named weekly meal planning and explicit planned-meal logging).
+- Current tagged development checkpoint: `v0.3.1-alpha` (named-meal hardening and automated-test bug fixes).
 - Generated APKs are kept locally in `releases/`; see `docs/BUILD_CHANNELS.md`.
 
 ## Current sprint: private alpha foundation
@@ -66,7 +66,7 @@ This file is the living scope record for the Android private alpha. Update it wh
 
 ### Version 0.3.1
 
-- [ ] Bug fixes found during automated and physical-device testing.
+- [x] Hardening fixes found during automated testing: atomic planned-log cleanup, weekday-bound logging, stale-load protection, and deleted-food edit warnings.
 
 ### Version 0.4.0
 

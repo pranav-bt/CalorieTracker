@@ -41,7 +41,7 @@ describe("routine persistence", () => {
     const db = {
       query: jest.fn()
         .mockResolvedValueOnce({ values: [] })
-        .mockResolvedValueOnce({ values: [{ id: 9, slot: "breakfast", total_calories: 200, protein_g: 10, carbs_g: 30, fat_g: 4, fiber_g: 5 }] })
+        .mockResolvedValueOnce({ values: [{ id: 9, weekday: 1, slot: "breakfast", total_calories: 200, protein_g: 10, carbs_g: 30, fat_g: 4, fiber_g: 5 }] })
         .mockResolvedValueOnce({ values: [{ name: "oats", quantity: 50, unit: "g", calories: 200, protein_g: 10, carbs_g: 30, fat_g: 4, fiber_g: 5 }] }),
       run: jest.fn().mockResolvedValueOnce({ changes: { changes: 1, lastId: 12 } }).mockResolvedValue({ changes: { changes: 1 } }),
     };
@@ -55,6 +55,15 @@ describe("routine persistence", () => {
     const db = { query: jest.fn().mockResolvedValue({ values: [{ meal_id: 12 }] }), run: jest.fn() };
     mockedGetDb.mockResolvedValue(db as never);
     await expect(logRoutineMeal(9, "2026-08-25")).rejects.toThrow("already logged");
+    expect(db.run).not.toHaveBeenCalled();
+  });
+
+  it("rejects logging a recurring slot on the wrong weekday", async () => {
+    const db = { query: jest.fn()
+      .mockResolvedValueOnce({ values: [] })
+      .mockResolvedValueOnce({ values: [{ id: 9, weekday: 0, slot: "breakfast" }] }), run: jest.fn() };
+    mockedGetDb.mockResolvedValue(db as never);
+    await expect(logRoutineMeal(9, "2026-08-25")).rejects.toThrow("different weekday");
     expect(db.run).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { currentWeekday, localDate, scaleFood, totalMeal } from "./routine";
+import { currentWeekday, localDate, scaleFood, totalMeal, weekdayForLocalDate } from "./routine";
 import type { Food } from "../types";
 
 const oats: Food = {
@@ -24,6 +24,12 @@ describe("meal routine calculations", () => {
   it("uses Monday as weekday zero and formats local dates", () => {
     expect(currentWeekday(new Date(2026, 7, 24))).toBe(0);
     expect(localDate(new Date(2026, 7, 25))).toBe("2026-08-25");
+    expect(weekdayForLocalDate("2026-08-25")).toBe(1);
+  });
+
+  it("rejects malformed and impossible local dates", () => {
+    expect(() => weekdayForLocalDate("2026-02-30")).toThrow("valid local date");
+    expect(() => weekdayForLocalDate("08/25/2026")).toThrow("valid local date");
   });
 
   it("rejects zero quantities", () => {

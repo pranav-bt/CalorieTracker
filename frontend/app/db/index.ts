@@ -1,7 +1,7 @@
 "use client";
 
 import { Capacitor } from "@capacitor/core";
-import { getDb } from "./client";
+import { getDb, inTransaction } from "./client";
 import {
   AFFIRMATIONS,
   DAY_GREETINGS,
@@ -401,9 +401,11 @@ export async function getMeals(dateFilter?: string): Promise<MealRecord[]> {
 export async function deleteMeal(id: number): Promise<void> {
   if (native()) {
     const db = await getDb();
-    await db.run("DELETE FROM planned_meal_logs WHERE meal_id=?", [id]);
-    const { changes } = await db.run("DELETE FROM meals WHERE id=?", [id]);
-    if (!changes?.changes) throw new Error("Meal not found.");
+    await inTransaction(db, async () => {
+      await db.run("DELETE FROM planned_meal_logs WHERE meal_id=?", [id], false);
+      const { changes } = await db.run("DELETE FROM meals WHERE id=?", [id], false);
+      if (!changes?.changes) throw new Error("Meal not found.");
+    });
     return;
   }
   const r = await fetch(`${API}/meal/${id}`, { method: "DELETE" });
@@ -413,9 +415,11 @@ export async function deleteMeal(id: number): Promise<void> {
 export async function deleteHistoryDay(day: string): Promise<void> {
   if (native()) {
     const db = await getDb();
-    await db.run("DELETE FROM planned_meal_logs WHERE logged_on=?", [day]);
-    const { changes } = await db.run("DELETE FROM meals WHERE date=?", [day]);
-    if (!changes?.changes) throw new Error("No meals found for that date.");
+    await inTransaction(db, async () => {
+      await db.run("DELETE FROM planned_meal_logs WHERE logged_on=?", [day], false);
+      const { changes } = await db.run("DELETE FROM meals WHERE date=?", [day], false);
+      if (!changes?.changes) throw new Error("No meals found for that date.");
+    });
     return;
   }
   const r = await fetch(`${API}/history/${day}`, { method: "DELETE" });

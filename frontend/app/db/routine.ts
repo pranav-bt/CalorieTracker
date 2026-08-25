@@ -2,7 +2,7 @@
 
 import { Capacitor } from "@capacitor/core";
 import { getDb, inTransaction } from "./client";
-import { localDate, totalMeal } from "../domain/routine";
+import { localDate, totalMeal, weekdayForLocalDate } from "../domain/routine";
 import type { MealItem, MealSlot, PlannedMeal, PlannedMealDraft, PlannedMealItem, Unit } from "../types";
 
 function requireAndroid(): void {
@@ -147,6 +147,9 @@ export async function logRoutineMeal(id: number, loggedOn = localDate()): Promis
     const { values: planRows } = await db.query("SELECT * FROM planned_meals WHERE id=?", [id]);
     const plan = planRows?.[0];
     if (!plan) throw new Error("Planned meal not found.");
+    if (Number(plan.weekday) !== weekdayForLocalDate(loggedOn)) {
+      throw new Error("This planned meal belongs to a different weekday.");
+    }
     const { values: items } = await db.query(
       `SELECT name, quantity, unit, calories, protein_g, carbs_g, fat_g, fiber_g
          FROM planned_meal_items WHERE planned_meal_id=? ORDER BY order_index, id`,

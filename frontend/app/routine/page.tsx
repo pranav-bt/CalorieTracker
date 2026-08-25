@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Pencil, Plus, Save, Trash2, Utensils, X } from "lucide-react";
 import { getFoods } from "../db";
 import { deleteRoutineMeal, getRoutineMeals, saveRoutineMeal } from "../db/routine";
@@ -22,9 +22,13 @@ export default function RoutinePage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [editorWarning, setEditorWarning] = useState("");
+  const loadRequest = useRef(0);
 
   async function load() {
+    const request = ++loadRequest.current;
     const [foodRows, planned, activePlan] = await Promise.all([getFoods(), getRoutineMeals(weekday), getActiveNutritionPlan()]);
+    if (request !== loadRequest.current) return;
     setFoods(foodRows); setMeals(planned); setTargets(activePlan?.days ?? []);
   }
   useEffect(() => { setEditing(null); load().catch((caught) => setError(caught instanceof Error ? caught.message : "Could not load the routine.")); }, [weekday]);
@@ -41,6 +45,8 @@ export default function RoutinePage() {
     setEditing(slot); setName(meal?.name ?? "");
     const editable = meal?.items.filter((item) => item.food_id !== null).map((item) => ({ foodId: String(item.food_id), quantity: String(item.quantity) }));
     setRows(editable?.length ? editable : [{ foodId: "", quantity: "" }]);
+    const missingCount = meal?.items.filter((item) => item.food_id === null).length ?? 0;
+    setEditorWarning(missingCount ? `${missingCount} ingredient${missingCount === 1 ? " was" : "s were"} deleted from the food database. The saved dish remains unchanged unless you replace ${missingCount === 1 ? "it" : "them"} and save.` : "");
     setMessage(""); setError("");
   }
 
@@ -104,6 +110,7 @@ export default function RoutinePage() {
       {editing && <section className="panel routineEditor">
         <div className="panelHeader"><div><p className="eyebrow">{WEEKDAYS[weekday]} · {editing}</p><h2>Planned dish</h2></div><button aria-label="Close editor" className="iconButton" onClick={() => setEditing(null)} type="button"><X size={18} /></button></div>
         <label className="stackedField"><span>Dish name</span><input autoFocus placeholder="e.g. Oats and eggs" value={name} onChange={(event) => setName(event.target.value)} /></label>
+        {editorWarning && <p className="warningNotice">{editorWarning}</p>}
         <div className="routineIngredientRows">
           {rows.map((row, index) => {
             const food = foods.find((item) => item.id === Number(row.foodId));

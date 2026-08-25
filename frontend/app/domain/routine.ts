@@ -10,6 +10,13 @@ export function localDate(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+export function weekdayForLocalDate(date: string): number {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Use a valid local date in YYYY-MM-DD format.");
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime()) || localDate(parsed) !== date) throw new Error("Use a valid local date in YYYY-MM-DD format.");
+  return currentWeekday(parsed);
+}
+
 export function scaleFood(food: Food, quantity: number): MealItem {
   if (!Number.isFinite(quantity) || quantity <= 0) throw new Error("Every ingredient needs a quantity above zero.");
   const ratio = quantity / food.reference_quantity;
